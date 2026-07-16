@@ -3,6 +3,17 @@ export interface Agent {
   user_id: string;
   name: string | null;
   email: string;
+  agent_photo_url: string | null;
+  agent_phone_number: string | null;
+  agent_license_number: string | null;
+  broker_name: string | null;
+  broker_license_number: string | null;
+  office_address: string | null;
+  about_me: string | null;
+  personal_website: string | null;
+  company_logo_url: string | null;
+  email_signature_image_url: string | null;
+  updated_at: string | null;
   created_at: string;
 }
 

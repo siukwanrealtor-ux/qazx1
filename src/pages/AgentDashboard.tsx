@@ -12,10 +12,12 @@ import {
   Mail,
   Search,
   X,
+  UserRound,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import type { Client } from "../lib/types";
+import AgentAvatar from "../components/AgentAvatar";
 
 export default function AgentDashboard() {
   const { agent, signOut, refreshAgent } = useAuth();
@@ -57,6 +59,10 @@ export default function AgentDashboard() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const openProfile = () => {
+    window.location.hash = "#/agent/profile";
+  };
+
   if (!agent && !loading) {
     // Not an agent — bounce home.
     window.location.hash = "#/";
@@ -67,7 +73,7 @@ export default function AgentDashboard() {
     <div className="min-h-screen bg-ink-50">
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-ink-100 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600">
               <Building2 className="h-4.5 w-4.5 text-white" />
@@ -76,16 +82,37 @@ export default function AgentDashboard() {
               EstateSync
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-ink-900">
-                {agent?.name || "Agent"}
-              </p>
-              <p className="text-xs text-ink-500">{agent?.email}</p>
-            </div>
-            <button onClick={signOut} className="btn-ghost" title="Sign out">
-              <LogOut className="h-4 w-4" />
+          <div className="flex flex-1 flex-col gap-3 rounded-2xl border border-ink-100 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between lg:max-w-2xl">
+            <button
+              type="button"
+              onClick={openProfile}
+              className="flex items-center gap-4 text-left"
+            >
+              <AgentAvatar
+                name={agent?.name}
+                email={agent?.email}
+                photoUrl={agent?.agent_photo_url}
+                sizeClassName="h-16 w-16"
+                textClassName="text-lg"
+              />
+              <div>
+                <p className="text-base font-semibold text-ink-900">
+                  {agent?.name || "Agent"}
+                </p>
+                <p className="mt-0.5 text-sm text-ink-500">{agent?.email}</p>
+                <p className="mt-0.5 text-sm text-ink-500">
+                  {agent?.agent_phone_number || "Mobile phone number"}
+                </p>
+              </div>
             </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={openProfile} className="btn-secondary">
+                <UserRound className="h-4 w-4" /> Profile
+              </button>
+              <button onClick={signOut} className="btn-ghost" title="Sign out">
+                <LogOut className="h-4 w-4" /> Sign Out
+              </button>
+            </div>
           </div>
         </div>
       </header>

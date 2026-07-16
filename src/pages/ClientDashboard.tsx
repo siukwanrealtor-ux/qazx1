@@ -16,11 +16,15 @@ import {
   ChevronRight,
   X,
   ArrowLeft,
+  Globe,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
-import type { Client, Search, Listing, ListingStatus, CustomerStatus } from "../lib/types";
+import type { Agent, Client, Search, Listing, ListingStatus, CustomerStatus } from "../lib/types";
 import ListingModal from "../components/ListingModal";
+import AgentAvatar from "../components/AgentAvatar";
 
 interface Props {
   clientId: string;
@@ -28,6 +32,7 @@ interface Props {
 
 export default function ClientDashboard({ clientId }: Props) {
   const { signOut, user } = useAuth();
+  const [agent, setAgent] = useState<Agent | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [searches, setSearches] = useState<Search[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -58,6 +63,13 @@ export default function ClientDashboard({ clientId }: Props) {
       return;
     }
     setClient(clientData as Client);
+
+    const { data: agentData } = await supabase
+      .from("agents")
+      .select("*")
+      .eq("id", (clientData as Client).agent_id)
+      .maybeSingle();
+    setAgent((agentData as Agent | null) || null);
 
     const { data: searchData } = await supabase
       .from("searches")
@@ -147,6 +159,12 @@ export default function ClientDashboard({ clientId }: Props) {
     window.location.hash = "#/agent/dashboard";
   };
 
+  const websiteUrl = agent?.personal_website
+    ? /^https?:\/\//i.test(agent.personal_website)
+      ? agent.personal_website
+      : `https://${agent.personal_website}`
+    : null;
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-ink-50">
@@ -229,6 +247,53 @@ export default function ClientDashboard({ clientId }: Props) {
             </div>
           </div>
         </div>
+
+        {agent && (
+          <div className="mt-4 card p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <AgentAvatar
+                  name={agent.name}
+                  email={agent.email}
+                  photoUrl={agent.agent_photo_url}
+                  sizeClassName="h-14 w-14"
+                  textClassName="text-base"
+                />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
+                    Your agent
+                  </p>
+                  <h2 className="mt-1 font-display text-xl font-semibold text-ink-900">
+                    {agent.name || agent.email}
+                  </h2>
+                  <div className="mt-2 flex flex-wrap gap-3 text-sm text-ink-500">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Mail className="h-4 w-4 text-ink-400" />
+                      {agent.email}
+                    </span>
+                    {agent.agent_phone_number && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Phone className="h-4 w-4 text-ink-400" />
+                        {agent.agent_phone_number}
+                      </span>
+                    )}
+                    {websiteUrl && (
+                      <a
+                        href={websiteUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700"
+                      >
+                        <Globe className="h-4 w-4" />
+                        Personal website
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Searches section */}
         <div className="mt-6 flex items-center justify-between">

@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import SetupPassword from "./pages/SetupPassword";
 import AgentDashboard from "./pages/AgentDashboard";
 import ClientDashboard from "./pages/ClientDashboard";
+import AgentProfile from "./pages/AgentProfile";
 import { Loader2 } from "lucide-react";
 
 function Router() {
@@ -24,7 +25,9 @@ function Router() {
     if (isSetupFlow) return; // Don't redirect during setup flow
 
     const isProtected =
-      route.path === "/agent/dashboard" || route.path.startsWith("/client/");
+      route.path === "/agent/dashboard" ||
+      route.path === "/agent/profile" ||
+      route.path.startsWith("/client/");
 
     if (isProtected && !session) {
       navigate("/");
@@ -64,6 +67,12 @@ function Router() {
   if (route.path === "/agent/dashboard") {
     if (!session) return <Home />;
     return <AgentDashboard />;
+  }
+
+  // Agent profile
+  if (route.path === "/agent/profile") {
+    if (!session) return <Home />;
+    return <AgentProfile />;
   }
 
   // Default — home
