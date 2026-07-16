@@ -1,0 +1,515 @@
+import { useState, useEffect } from "react";
+import {
+  Building2,
+  Plus,
+  LogOut,
+  Loader2,
+  Search as SearchIcon,
+  Home,
+  BedDouble,
+  Bath,
+  Maximize,
+  MapPin,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  X,
+  ArrowLeft,
+} from "lucide-react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../lib/auth";
+import type { Client, Search, Listing, ListingStatus, CustomerStatus } from "../lib/types";
+import ListingModal from "../components/ListingModal";
+
+interface Props {
+  clientId: string;
+}
+
+export default function ClientDashboard({ clientId }: Props) {
+  const { signOut, user } = useAuth();
+  const [client, setClient] = useState<Client | null>(null);
+  const [searches, setSearches] = useState<Search[]>([]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [listingsBySearch, setListingsBySearch] = useState<
+    Record<string, Listing[]>
+  >({});
+  const [loading, setLoading] = useState(true);
+  const [showAddSearch, setShowAddSearch] = useState(false);
+  const [newSearchName, setNewSearchName] = useState("");
+  const [editingListing, setEditingListing] = useState<Listing | null>(null);
+  const [listingModalSearchId, setListingModalSearchId] = useState<string | null>(
+    null
+  );
+  const [accessDenied, setAccessDenied] = useState(false);
+
+  // Load client + searches
+  const loadAll = async () => {
+    setLoading(true);
+    const { data: clientData, error: clientErr } = await supabase
+      .from("clients")
+      .select("*")
+      .eq("id", clientId)
+      .maybeSingle();
+
+    if (clientErr || !clientData) {
+      setAccessDenied(true);
+      setLoading(false);
+      return;
+    }
+    setClient(clientData as Client);
+
+    const { data: searchData } = await supabase
+      .from("searches")
+      .select("*")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false });
+    const sList = (searchData as Search[]) || [];
+    setSearches(sList);
+    setExpanded(new Set(sList.map((s) => s.id)));
+    setLoading(false);
+
+    // Load listings for each search
+    const map: Record<string, Listing[]> = {};
+    await Promise.all(
+      sList.map(async (s) => {
+        const { data: ldata } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("search_id", s.id)
+          .order("created_at", { ascending: false });
+        map[s.id] = (ldata as Listing[]) || [];
+      })
+    );
+    setListingsBySearch(map);
+  };
+
+  useEffect(() => {
+    loadAll();
+  }, [clientId]);
+
+  const reloadListings = async (searchId: string) => {
+    const { data } = await supabase
+      .from("listings")
+      .select("*")
+      .eq("search_id", searchId)
+      .order("created_at", { ascending: false });
+    setListingsBySearch((prev) => ({
+      ...prev,
+      [searchId]: (data as Listing[]) || [],
+    }));
+  };
+
+  const addSearch = async () => {
+    if (!newSearchName.trim()) return;
+    const { data } = await supabase
+      .from("searches")
+      .insert({ client_id: clientId, name: newSearchName.trim() })
+      .select()
+      .single();
+    if (data) {
+      const newSearch = data as Search;
+      setSearches((prev) => [newSearch, ...prev]);
+      setExpanded((prev) => new Set(prev).add(newSearch.id));
+      setListingsBySearch((prev) => ({ ...prev, [newSearch.id]: [] }));
+    }
+    setNewSearchName("");
+    setShowAddSearch(false);
+  };
+
+  const deleteSearch = async (id: string) => {
+    if (!confirm("Delete this search and all its listings?")) return;
+    await supabase.from("searches").delete().eq("id", id);
+    setSearches((prev) => prev.filter((s) => s.id !== id));
+    setListingsBySearch((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const deleteListing = async (searchId: string, id: string) => {
+    if (!confirm("Delete this listing?")) return;
+    await supabase.from("listings").delete().eq("id", id);
+    reloadListings(searchId);
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const goBack = () => {
+    window.location.hash = "#/agent/dashboard";
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-ink-50">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-ink-50 px-4 text-center">
+        <p className="text-lg font-semibold text-ink-900">Access denied</p>
+        <p className="mt-1 text-sm text-ink-500">
+          You don't have access to this client dashboard.
+        </p>
+        <button onClick={goBack} className="btn-primary mt-6">
+          <ArrowLeft className="h-4 w-4" /> Back to dashboard
+        </button>
+      </div>
+    );
+  }
+
+  const isAgentView = !!user && client?.user_id !== user.id;
+
+  return (
+    <div className="min-h-screen bg-ink-50">
+      {/* Header */}
+      <header className="sticky top-0 z-20 border-b border-ink-100 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={goBack}
+              className="btn-ghost p-1.5"
+              title="Back to clients"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600">
+                <Building2 className="h-4.5 w-4.5 text-white" />
+              </div>
+              <span className="font-display text-lg font-semibold tracking-tight text-ink-900">
+                EstateSync
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-xs font-medium text-ink-500 sm:block">
+              {isAgentView ? "Agent view" : "Client view"}
+            </span>
+            <button onClick={signOut} className="btn-ghost" title="Sign out">
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        {/* Client header */}
+        <div className="card overflow-hidden">
+          <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-xl font-semibold text-brand-700">
+                {client?.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h1 className="font-display text-2xl font-semibold text-ink-900">
+                  {client?.name}
+                </h1>
+                <div className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-500">
+                  <span>{client?.email}</span>
+                  {client?.phone && <span>• {client.phone}</span>}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="badge bg-brand-100 text-brand-700">
+                {searches.length} {searches.length === 1 ? "search" : "searches"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Searches section */}
+        <div className="mt-6 flex items-center justify-between">
+          <h2 className="font-display text-xl font-semibold text-ink-900">
+            Saved searches
+          </h2>
+          <button
+            onClick={() => setShowAddSearch(true)}
+            className="btn-primary"
+          >
+            <Plus className="h-4 w-4" /> New search
+          </button>
+        </div>
+
+        {searches.length === 0 ? (
+          <div className="mt-4 card flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-ink-100">
+              <SearchIcon className="h-6 w-6 text-ink-400" />
+            </div>
+            <p className="mt-3 text-sm font-medium text-ink-700">
+              No searches yet
+            </p>
+            <p className="mt-1 text-xs text-ink-400">
+              Create a search to start adding listings.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {searches.map((s) => {
+              const isOpen = expanded.has(s.id);
+              const listings = listingsBySearch[s.id] || [];
+              return (
+                <div key={s.id} className="card overflow-hidden">
+                  {/* Search header */}
+                  <div className="flex items-center justify-between border-b border-ink-50 bg-ink-50/40 px-5 py-3">
+                    <button
+                      onClick={() => toggleExpand(s.id)}
+                      className="flex items-center gap-2 text-left"
+                    >
+                      {isOpen ? (
+                        <ChevronDown className="h-4 w-4 text-ink-500" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-ink-500" />
+                      )}
+                      <span className="font-medium text-ink-900">{s.name}</span>
+                      <span className="badge bg-ink-100 text-ink-600">
+                        {listings.length} {listings.length === 1 ? "listing" : "listings"}
+                      </span>
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingListing(null);
+                          setListingModalSearchId(s.id);
+                        }}
+                        className="btn-secondary py-1.5 text-xs"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add listing
+                      </button>
+                      <button
+                        onClick={() => deleteSearch(s.id)}
+                        className="btn-ghost p-1.5 text-ink-400 hover:text-red-600"
+                        title="Delete search"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Listings */}
+                  {isOpen && (
+                    <div className="p-4">
+                      {listings.length === 0 ? (
+                        <p className="py-6 text-center text-sm text-ink-400">
+                          No listings in this search yet.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {listings.map((l) => (
+                            <ListingCard
+                              key={l.id}
+                              listing={l}
+                              onEdit={() => {
+                                setEditingListing(l);
+                                setListingModalSearchId(s.id);
+                              }}
+                              onDelete={() => deleteListing(s.id, l.id)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      {/* Add search inline modal */}
+      {showAddSearch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div
+            className="absolute inset-0 bg-ink-950/40 backdrop-blur-sm"
+            onClick={() => setShowAddSearch(false)}
+          />
+          <div className="relative z-10 w-full max-w-sm card p-6 animate-fade-in-up">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-lg font-semibold text-ink-900">
+                New search
+              </h3>
+              <button
+                onClick={() => setShowAddSearch(false)}
+                className="btn-ghost p-1.5"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                addSearch();
+              }}
+              className="mt-4 space-y-3"
+            >
+              <input
+                className="input"
+                placeholder="e.g. Downtown condos under $500k"
+                value={newSearchName}
+                onChange={(e) => setNewSearchName(e.target.value)}
+                autoFocus
+              />
+              <button type="submit" className="btn-primary w-full">
+                Create search
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Listing modal */}
+      {listingModalSearchId && (
+        <ListingModal
+          listing={editingListing}
+          searchId={listingModalSearchId}
+          onClose={() => {
+            setListingModalSearchId(null);
+            setEditingListing(null);
+          }}
+          onSaved={() => {
+            reloadListings(listingModalSearchId);
+            setListingModalSearchId(null);
+            setEditingListing(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ListingCard({
+  listing,
+  onEdit,
+  onDelete,
+}: {
+  listing: Listing;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="group overflow-hidden rounded-xl border border-ink-100 bg-white shadow-soft transition hover:shadow-lift">
+      {/* Photo */}
+      <div className="relative h-40 overflow-hidden bg-ink-100">
+        {listing.photo_url ? (
+          <img
+            src={listing.photo_url}
+            alt={listing.address || "Listing"}
+            className="h-full w-full object-cover transition group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-ink-300">
+            <Home className="h-10 w-10" />
+          </div>
+        )}
+        <div className="absolute left-2 top-2">
+          <StatusBadge status={listing.listing_status as ListingStatus} />
+        </div>
+        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
+          <button
+            onClick={onEdit}
+            className="rounded-md bg-white/90 p-1.5 text-ink-600 shadow-sm hover:bg-white"
+            title="Edit"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="rounded-md bg-white/90 p-1.5 text-red-500 shadow-sm hover:bg-white"
+            title="Delete"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="p-4">
+        {listing.price != null && (
+          <p className="font-display text-lg font-semibold text-ink-900">
+            ${listing.price.toLocaleString()}
+          </p>
+        )}
+        {listing.address && (
+          <p className="mt-0.5 flex items-start gap-1 text-xs text-ink-500">
+            <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0" />
+            {listing.address}
+          </p>
+        )}
+
+        {/* Specs */}
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-600">
+          {listing.beds != null && (
+            <span className="flex items-center gap-1">
+              <BedDouble className="h-3.5 w-3.5 text-ink-400" />
+              {listing.beds} bd
+            </span>
+          )}
+          {listing.baths != null && (
+            <span className="flex items-center gap-1">
+              <Bath className="h-3.5 w-3.5 text-ink-400" />
+              {listing.baths} ba
+            </span>
+          )}
+          {listing.sqft != null && (
+            <span className="flex items-center gap-1">
+              <Maximize className="h-3.5 w-3.5 text-ink-400" />
+              {listing.sqft.toLocaleString()} sqft
+            </span>
+          )}
+          {listing.lot_size && (
+            <span className="text-ink-500">Lot: {listing.lot_size}</span>
+          )}
+        </div>
+
+        {/* Customer status + last updated */}
+        <div className="mt-3 flex items-center justify-between border-t border-ink-50 pt-3">
+          <CustomerBadge status={listing.customer_status as CustomerStatus} />
+          {listing.last_updated && (
+            <span className="text-xs text-ink-400">
+              Updated {new Date(listing.last_updated).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+
+        {listing.notes && (
+          <p className="mt-2 line-clamp-2 text-xs text-ink-500">{listing.notes}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: ListingStatus }) {
+  const colors: Record<ListingStatus, string> = {
+    Active: "bg-brand-500 text-white",
+    Pending: "bg-gold-400 text-ink-900",
+    Sold: "bg-ink-700 text-white",
+    "Off Market": "bg-ink-400 text-white",
+    "Coming Soon": "bg-blue-500 text-white",
+  };
+  return <span className={`badge ${colors[status]}`}>{status}</span>;
+}
+
+function CustomerBadge({ status }: { status: CustomerStatus }) {
+  const colors: Record<CustomerStatus, string> = {
+    "New Lead": "bg-blue-100 text-blue-700",
+    Touring: "bg-gold-100 text-gold-700",
+    Interested: "bg-brand-100 text-brand-700",
+    "Not Interested": "bg-ink-100 text-ink-600",
+    "Under Contract": "bg-purple-100 text-purple-700",
+  };
+  return <span className={`badge ${colors[status]}`}>{status}</span>;
+}
