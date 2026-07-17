@@ -119,7 +119,7 @@ export default function AgentDashboard() {
                 </p>
                 <p className="mt-0.5 text-sm text-ink-500">{agent?.email}</p>
                 <p className="mt-0.5 text-sm text-ink-500">
-                  {agent?.agent_phone_number || "Mobile phone number"}
+                  {agent?.agent_phone_number?.trim() || "No phone number on file"}
                 </p>
               </div>
             </button>
