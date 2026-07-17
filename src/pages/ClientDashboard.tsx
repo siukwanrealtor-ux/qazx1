@@ -241,15 +241,65 @@ export default function ClientDashboard({ clientId }: Props) {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        {agent && (
+          <div className="card p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <AgentAvatar
+                  name={agent.name}
+                  email={agent.email}
+                  photoUrl={agent.agent_photo_url}
+                  sizeClassName="h-14 w-14"
+                  textClassName="text-base"
+                />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
+                    Your agent
+                  </p>
+                  <h2 className="mt-1 font-display text-xl font-semibold text-ink-900">
+                    {agent.name || agent.email}
+                  </h2>
+                  <div className="mt-2 flex flex-wrap gap-3 text-sm text-ink-500">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Mail className="h-4 w-4 text-ink-400" />
+                      {agent.email}
+                    </span>
+                    {agent.agent_phone_number && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Phone className="h-4 w-4 text-ink-400" />
+                        {agent.agent_phone_number}
+                      </span>
+                    )}
+                    {websiteUrl && (
+                      <a
+                        href={websiteUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700"
+                      >
+                        <Globe className="h-4 w-4" />
+                        Personal website
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Client header */}
-        <div className="card overflow-hidden">
+        <div className="mt-4 card overflow-hidden">
           <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-xl font-semibold text-brand-700">
                 {client?.name.charAt(0).toUpperCase()}
               </div>
               <div>
-                <h1 className="font-display text-2xl font-semibold text-ink-900">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
+                  Client
+                </p>
+                <h1 className="mt-1 font-display text-2xl font-semibold text-ink-900">
                   {client?.name}
                 </h1>
                 <div className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-500">
@@ -302,53 +352,6 @@ export default function ClientDashboard({ clientId }: Props) {
                 <p>Pre-Approved: <span className="font-medium text-ink-900">{client.pre_approved ? "Yes" : "No"}</span></p>
               </div>
             )}
-          </div>
-        )}
-
-        {agent && (
-          <div className="mt-4 card p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <AgentAvatar
-                  name={agent.name}
-                  email={agent.email}
-                  photoUrl={agent.agent_photo_url}
-                  sizeClassName="h-14 w-14"
-                  textClassName="text-base"
-                />
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
-                    Your agent
-                  </p>
-                  <h2 className="mt-1 font-display text-xl font-semibold text-ink-900">
-                    {agent.name || agent.email}
-                  </h2>
-                  <div className="mt-2 flex flex-wrap gap-3 text-sm text-ink-500">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Mail className="h-4 w-4 text-ink-400" />
-                      {agent.email}
-                    </span>
-                    {agent.agent_phone_number && (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Phone className="h-4 w-4 text-ink-400" />
-                        {agent.agent_phone_number}
-                      </span>
-                    )}
-                    {websiteUrl && (
-                      <a
-                        href={websiteUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700"
-                      >
-                        <Globe className="h-4 w-4" />
-                        Personal website
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
