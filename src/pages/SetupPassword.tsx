@@ -93,7 +93,7 @@ export default function SetupPassword() {
             <Building2 className="h-5 w-5 text-white" />
           </div>
           <span className="font-display text-xl font-semibold tracking-tight text-ink-900">
-            EstateSync
+            Realty Dash
           </span>
         </div>
 

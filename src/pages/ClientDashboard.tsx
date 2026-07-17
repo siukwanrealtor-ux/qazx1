@@ -225,7 +225,7 @@ export default function ClientDashboard({ clientId }: Props) {
                 <Building2 className="h-4.5 w-4.5 text-white" />
               </div>
               <span className="font-display text-lg font-semibold tracking-tight text-ink-900">
-                EstateSync
+                Realty Dash
               </span>
             </div>
           </div>

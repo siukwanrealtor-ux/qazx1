@@ -22,7 +22,7 @@ const LEGAL_CONTENT: Record<LegalPageType, LegalContent> = {
   "about-us": {
     title: "About Us",
     intro:
-      "EstateSync helps real estate professionals and clients stay aligned throughout the home search and transaction lifecycle.",
+      "Realty Dash helps real estate professionals and clients stay aligned throughout the home search and transaction lifecycle.",
     sections: [
       {
         heading: "What We Do",
@@ -44,7 +44,7 @@ const LEGAL_CONTENT: Record<LegalPageType, LegalContent> = {
   "privacy-policy": {
     title: "Privacy Policy",
     intro:
-      "We respect your privacy and handle personal information responsibly in connection with EstateSync services.",
+      "We respect your privacy and handle personal information responsibly in connection with Realty Dash services.",
     sections: [
       {
         heading: "Information We Collect",
@@ -71,7 +71,7 @@ const LEGAL_CONTENT: Record<LegalPageType, LegalContent> = {
   "terms-of-service": {
     title: "Terms of Service",
     intro:
-      "By using EstateSync, you agree to these terms governing access to and use of the platform.",
+      "By using Realty Dash, you agree to these terms governing access to and use of the platform.",
     sections: [
       {
         heading: "Account Responsibilities",
@@ -98,7 +98,7 @@ const LEGAL_CONTENT: Record<LegalPageType, LegalContent> = {
   "data-policy": {
     title: "Data Policy",
     intro:
-      "This policy describes how EstateSync stores, protects, and retains operational and customer data.",
+      "This policy describes how Realty Dash stores, protects, and retains operational and customer data.",
     sections: [
       {
         heading: "Data Storage",
@@ -125,7 +125,7 @@ const LEGAL_CONTENT: Record<LegalPageType, LegalContent> = {
   "dmca-policy": {
     title: "DMCA Policy",
     intro:
-      "EstateSync respects intellectual property rights and responds to valid copyright claims in accordance with applicable law.",
+      "Realty Dash respects intellectual property rights and responds to valid copyright claims in accordance with applicable law.",
     sections: [
       {
         heading: "Notice of Claimed Infringement",
@@ -168,7 +168,7 @@ export default function LegalPage({ type }: { type: LegalPageType }) {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600">
               <Building2 className="h-4.5 w-4.5 text-white" />
             </div>
-            <span className="font-display text-lg font-semibold tracking-tight text-ink-900">EstateSync</span>
+            <span className="font-display text-lg font-semibold tracking-tight text-ink-900">Realty Dash</span>
           </div>
         </div>
       </header>

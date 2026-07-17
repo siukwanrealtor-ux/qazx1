@@ -97,7 +97,7 @@ export default function AgentDashboard() {
               <Building2 className="h-4.5 w-4.5 text-white" />
             </div>
             <span className="font-display text-lg font-semibold tracking-tight text-ink-900">
-              EstateSync
+              Realty Dash
             </span>
           </div>
           <div className="flex flex-1 flex-col gap-3 rounded-2xl border border-ink-100 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between lg:max-w-2xl">

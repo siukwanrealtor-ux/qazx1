@@ -165,7 +165,7 @@ export default function Home() {
               <Building2 className="h-5 w-5 text-white" />
             </div>
             <span className="font-display text-xl font-semibold tracking-tight">
-              EstateSync
+              Realty Dash
             </span>
           </div>
 
@@ -174,7 +174,7 @@ export default function Home() {
               Manage every client, every listing, in one elegant place.
             </h1>
             <p className="mt-4 text-base leading-relaxed text-ink-300">
-              EstateSync gives real estate agents a private workspace to onboard
+              Realty Dash gives real estate agents a private workspace to onboard
               clients, build saved searches, and track listings — with a shared
               dashboard your clients can actually use.
             </p>
@@ -196,7 +196,7 @@ export default function Home() {
 
           <div className="relative z-10 space-y-3">
             <p className="text-xs text-ink-400">
-              © {new Date().getFullYear()} EstateSync. All rights reserved.
+              © {new Date().getFullYear()} Realty Dash. All rights reserved.
             </p>
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-ink-300">
               <a href="#/about-us" className="transition hover:text-white">About Us</a>

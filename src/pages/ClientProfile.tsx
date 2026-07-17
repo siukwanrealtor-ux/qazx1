@@ -174,7 +174,7 @@ export default function ClientProfile({ clientId }: Props) {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600">
                 <Building2 className="h-4.5 w-4.5 text-white" />
               </div>
-              <span className="font-display text-lg font-semibold tracking-tight text-ink-900">EstateSync</span>
+              <span className="font-display text-lg font-semibold tracking-tight text-ink-900">Realty Dash</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
