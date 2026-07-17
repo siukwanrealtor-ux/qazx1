@@ -7,6 +7,7 @@ import AgentDashboard from "./pages/AgentDashboard";
 import ClientDashboard from "./pages/ClientDashboard";
 import AgentProfile from "./pages/AgentProfile";
 import ClientProfile from "./pages/ClientProfile";
+import LegalPage from "./pages/LegalPage";
 import { Loader2 } from "lucide-react";
 
 function Router() {
@@ -56,6 +57,23 @@ function Router() {
   // Setup password route (manual hash)
   if (route.path === "/setup-password") {
     return <SetupPassword />;
+  }
+
+  // Public legal/info routes
+  if (route.path === "/about-us") {
+    return <LegalPage type="about-us" />;
+  }
+  if (route.path === "/privacy-policy") {
+    return <LegalPage type="privacy-policy" />;
+  }
+  if (route.path === "/terms-of-service") {
+    return <LegalPage type="terms-of-service" />;
+  }
+  if (route.path === "/data-policy") {
+    return <LegalPage type="data-policy" />;
+  }
+  if (route.path === "/dmca-policy") {
+    return <LegalPage type="dmca-policy" />;
   }
 
   // Client profile

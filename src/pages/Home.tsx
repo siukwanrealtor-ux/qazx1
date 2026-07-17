@@ -194,9 +194,18 @@ export default function Home() {
             </div>
           </div>
 
-          <p className="relative z-10 text-xs text-ink-400">
-            © {new Date().getFullYear()} EstateSync. All rights reserved.
-          </p>
+          <div className="relative z-10 space-y-3">
+            <p className="text-xs text-ink-400">
+              © {new Date().getFullYear()} EstateSync. All rights reserved.
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-ink-300">
+              <a href="#/about-us" className="transition hover:text-white">About Us</a>
+              <a href="#/privacy-policy" className="transition hover:text-white">Privacy Policy</a>
+              <a href="#/terms-of-service" className="transition hover:text-white">Terms of Service</a>
+              <a href="#/data-policy" className="transition hover:text-white">Data Policy</a>
+              <a href="#/dmca-policy" className="transition hover:text-white">DMCA Policy</a>
+            </div>
+          </div>
         </div>
 
         {/* Right — auth form */}

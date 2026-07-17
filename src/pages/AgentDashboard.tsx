@@ -288,6 +288,16 @@ export default function AgentDashboard() {
         </div>
       </main>
 
+      <footer className="border-t border-ink-100 bg-white">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-4 text-xs text-ink-500 sm:px-6">
+          <a href="#/about-us" className="transition hover:text-ink-800">About Us</a>
+          <a href="#/privacy-policy" className="transition hover:text-ink-800">Privacy Policy</a>
+          <a href="#/terms-of-service" className="transition hover:text-ink-800">Terms of Service</a>
+          <a href="#/data-policy" className="transition hover:text-ink-800">Data Policy</a>
+          <a href="#/dmca-policy" className="transition hover:text-ink-800">DMCA Policy</a>
+        </div>
+      </footer>
+
       {showAdd && agent && (
         <AddClientModal
           agentId={agent.id}
