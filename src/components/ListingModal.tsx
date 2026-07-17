@@ -59,7 +59,7 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
       notes: form.notes || null,
     };
 
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/properties${
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/listings${
       listing ? `?id=eq.${listing.id}` : ""
     }`;
     const method = listing ? "PATCH" : "POST";
