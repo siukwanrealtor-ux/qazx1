@@ -106,10 +106,14 @@ export default function ClientProfile({ clientId }: Props) {
     setSaving(true);
     setSaveMessage(null);
 
-    const payload = {
+    const basicPayload = {
       name: name.trim(),
       phone: phone.trim() || null,
       email: email.trim().toLowerCase(),
+    };
+
+    const profilePayload = {
+      ...basicPayload,
       client_type: clientType,
       client_status: clientStatus.trim() || null,
       purchase_price: clientType === "buyer" ? toNumberOrNull(purchasePrice) : null,
@@ -126,7 +130,27 @@ export default function ClientProfile({ clientId }: Props) {
       credit_score: clientType === "renter" ? toNumberOrNull(creditScore) : null,
     };
 
-    const { error } = await supabase.from("clients").update(payload).eq("id", clientId);
+    let { error } = await supabase.from("clients").update(profilePayload).eq("id", clientId);
+
+    // Some deployments may still have an older clients table schema.
+    // If profile columns are missing, fall back to saving core contact fields.
+    if (error && /schema cache/i.test(error.message) && /column/i.test(error.message)) {
+      const { error: basicError } = await supabase
+        .from("clients")
+        .update(basicPayload)
+        .eq("id", clientId);
+
+      if (!basicError) {
+        setSaveMessage(
+          "Saved basic client info. Apply the latest database migration to enable buyer/renter criteria fields."
+        );
+        setSaving(false);
+        await loadClient();
+        return;
+      }
+
+      error = basicError;
+    }
 
     if (error) {
       setSaveMessage(error.message);
