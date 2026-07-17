@@ -1,5 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
-import Cropper, { Area } from "react-easy-crop";
+import Cropper from "react-easy-crop";
+import type { Area } from "react-easy-crop";
 import {
   ArrowLeft,
   Camera,
