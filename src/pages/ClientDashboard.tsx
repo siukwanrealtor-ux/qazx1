@@ -129,7 +129,7 @@ export default function ClientDashboard({ clientId }: Props) {
     await Promise.all(
       sList.map(async (s) => {
         const { data: ldata } = await supabase
-          .from("listings")
+          .from("properties")
           .select("*")
           .eq("search_id", s.id)
           .order("created_at", { ascending: false });
@@ -145,7 +145,7 @@ export default function ClientDashboard({ clientId }: Props) {
 
   const reloadListings = async (searchId: string) => {
     const { data } = await supabase
-      .from("listings")
+      .from("properties")
       .select("*")
       .eq("search_id", searchId)
       .order("created_at", { ascending: false });
@@ -185,7 +185,7 @@ export default function ClientDashboard({ clientId }: Props) {
 
   const deleteListing = async (searchId: string, id: string) => {
     if (!confirm("Delete this listing?")) return;
-    await supabase.from("listings").delete().eq("id", id);
+    await supabase.from("properties").delete().eq("id", id);
     reloadListings(searchId);
   };
 
