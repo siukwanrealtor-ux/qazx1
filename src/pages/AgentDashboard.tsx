@@ -19,6 +19,39 @@ import { useAuth } from "../lib/auth";
 import type { Client } from "../lib/types";
 import AgentAvatar from "../components/AgentAvatar";
 
+const CLIENT_BASE_SELECT = "id,agent_id,user_id,name,phone,email,created_at";
+const CLIENT_PROFILE_SELECT =
+  "id,agent_id,user_id,name,phone,email,created_at,client_type,client_status,purchase_price,rent_budget,desired_move_in_date,preferred_locations,bedrooms,bathrooms,min_sqft,school_district,pre_approved,pet_friendly,household_income,credit_score";
+
+const hasSchemaColumnError = (message?: string) => {
+  if (!message) return false;
+  return /schema cache/i.test(message) && /column/i.test(message);
+};
+
+const normalizeClient = (row: Partial<Client>): Client => ({
+  id: row.id || "",
+  agent_id: row.agent_id || "",
+  user_id: row.user_id ?? null,
+  name: row.name || "",
+  phone: row.phone ?? null,
+  email: row.email || "",
+  client_type: row.client_type ?? null,
+  client_status: row.client_status ?? null,
+  purchase_price: row.purchase_price ?? null,
+  rent_budget: row.rent_budget ?? null,
+  desired_move_in_date: row.desired_move_in_date ?? null,
+  preferred_locations: row.preferred_locations ?? null,
+  bedrooms: row.bedrooms ?? null,
+  bathrooms: row.bathrooms ?? null,
+  min_sqft: row.min_sqft ?? null,
+  school_district: row.school_district ?? null,
+  pre_approved: row.pre_approved ?? null,
+  pet_friendly: row.pet_friendly ?? null,
+  household_income: row.household_income ?? null,
+  credit_score: row.credit_score ?? null,
+  created_at: row.created_at || "",
+});
+
 export default function AgentDashboard() {
   const { agent, signOut, refreshAgent } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
@@ -29,12 +62,29 @@ export default function AgentDashboard() {
 
   const loadClients = async () => {
     if (!agent) return;
-    const { data } = await supabase
+    let { data, error } = await supabase
       .from("clients")
-      .select("*")
+      .select(CLIENT_PROFILE_SELECT)
       .eq("agent_id", agent.id)
       .order("created_at", { ascending: false });
-    setClients((data as Client[]) || []);
+
+    if (error && hasSchemaColumnError(error.message)) {
+      const fallback = await supabase
+        .from("clients")
+        .select(CLIENT_BASE_SELECT)
+        .eq("agent_id", agent.id)
+        .order("created_at", { ascending: false });
+      data = fallback.data;
+      error = fallback.error;
+    }
+
+    if (error) {
+      setClients([]);
+      setLoading(false);
+      return;
+    }
+
+    setClients(((data as Partial<Client>[]) || []).map(normalizeClient));
     setLoading(false);
   };
 
