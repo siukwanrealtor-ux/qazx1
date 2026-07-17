@@ -92,6 +92,11 @@ export default function AgentDashboard() {
     loadClients();
   }, [agent]);
 
+  useEffect(() => {
+    // Refresh agent profile on dashboard entry so profile updates appear immediately.
+    refreshAgent();
+  }, [refreshAgent]);
+
   const filtered = clients.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -129,6 +134,12 @@ export default function AgentDashboard() {
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  const formatAgentPhone = (value: unknown) => {
+    if (value == null) return "No phone number on file";
+    const normalized = String(value).trim();
+    return normalized || "No phone number on file";
   };
 
   if (!agent && !loading) {
@@ -169,7 +180,7 @@ export default function AgentDashboard() {
                 </p>
                 <p className="mt-0.5 text-sm text-ink-500">{agent?.email}</p>
                 <p className="mt-0.5 text-sm text-ink-500">
-                  {agent?.agent_phone_number?.trim() || "No phone number on file"}
+                  {formatAgentPhone(agent?.agent_phone_number)}
                 </p>
               </div>
             </button>
