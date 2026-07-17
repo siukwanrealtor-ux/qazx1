@@ -24,6 +24,20 @@ export interface Client {
   name: string;
   phone: string | null;
   email: string;
+  client_type: "buyer" | "renter" | null;
+  client_status: string | null;
+  purchase_price: number | null;
+  rent_budget: number | null;
+  desired_move_in_date: string | null;
+  preferred_locations: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  min_sqft: number | null;
+  school_district: string | null;
+  pre_approved: boolean | null;
+  pet_friendly: boolean | null;
+  household_income: number | null;
+  credit_score: number | null;
   created_at: string;
 }
 

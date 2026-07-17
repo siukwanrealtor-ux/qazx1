@@ -159,6 +159,24 @@ export default function ClientDashboard({ clientId }: Props) {
     window.location.hash = "#/agent/dashboard";
   };
 
+  const openProfile = () => {
+    window.location.hash = `#/client/${clientId}/profile`;
+  };
+
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value == null) return "-";
+    return `$${value.toLocaleString()}`;
+  };
+
+  const formatDate = (value: string | null | undefined) => {
+    if (!value) return "-";
+    return new Date(value).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   const websiteUrl = agent?.personal_website
     ? /^https?:\/\//i.test(agent.personal_website)
       ? agent.personal_website
@@ -244,9 +262,48 @@ export default function ClientDashboard({ clientId }: Props) {
               <span className="badge bg-brand-100 text-brand-700">
                 {searches.length} {searches.length === 1 ? "search" : "searches"}
               </span>
+              <button onClick={openProfile} className="btn-secondary py-1.5 text-xs">
+                <Pencil className="h-3.5 w-3.5" /> Edit profile
+              </button>
             </div>
           </div>
         </div>
+
+        {client && (
+          <div className="mt-4 card p-6">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="font-display text-xl font-semibold text-ink-900">Client criteria</h2>
+              <span className="badge bg-ink-100 text-ink-700">
+                {client.client_type === "renter" ? "Renter" : "Buyer"}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-ink-600">
+              Status: <span className="font-medium text-ink-900">{client.client_status || (client.client_type === "renter" ? "Searching" : "Active Search")}</span>
+            </p>
+
+            {client.client_type === "renter" ? (
+              <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-2">
+                <p>Budget: <span className="font-medium text-ink-900">{formatCurrency(client.rent_budget)}/mo</span></p>
+                <p>Move-In: <span className="font-medium text-ink-900">{formatDate(client.desired_move_in_date)}</span></p>
+                <p>Location: <span className="font-medium text-ink-900">{client.preferred_locations || "-"}</span></p>
+                <p>Beds/Baths: <span className="font-medium text-ink-900">{client.bedrooms ?? "-"} / {client.bathrooms ?? "-"}</span></p>
+                <p>Min Sq Ft: <span className="font-medium text-ink-900">{client.min_sqft?.toLocaleString() || "-"}</span></p>
+                <p>Income: <span className="font-medium text-ink-900">{formatCurrency(client.household_income)}</span></p>
+                <p>Credit Score: <span className="font-medium text-ink-900">{client.credit_score ?? "-"}</span></p>
+                <p>Pets: <span className="font-medium text-ink-900">{client.pet_friendly ? "Yes" : "No"}</span></p>
+              </div>
+            ) : (
+              <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-2">
+                <p>Purchase Price: <span className="font-medium text-ink-900">{formatCurrency(client.purchase_price)}</span></p>
+                <p>Location: <span className="font-medium text-ink-900">{client.preferred_locations || "-"}</span></p>
+                <p>Beds/Baths: <span className="font-medium text-ink-900">{client.bedrooms ?? "-"} / {client.bathrooms ?? "-"}</span></p>
+                <p>Min Sq Ft: <span className="font-medium text-ink-900">{client.min_sqft?.toLocaleString() || "-"}</span></p>
+                <p>School District: <span className="font-medium text-ink-900">{client.school_district || "-"}</span></p>
+                <p>Pre-Approved: <span className="font-medium text-ink-900">{client.pre_approved ? "Yes" : "No"}</span></p>
+              </div>
+            )}
+          </div>
+        )}
 
         {agent && (
           <div className="mt-4 card p-6">

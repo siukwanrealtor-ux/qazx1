@@ -52,6 +52,10 @@ export default function AgentDashboard() {
     window.location.hash = `#/client/${clientId}`;
   };
 
+  const openClientProfile = (clientId: string) => {
+    window.location.hash = `#/client/${clientId}/profile`;
+  };
+
   const copyLink = (clientId: string) => {
     const link = `${window.location.origin}${window.location.pathname}#/client/${clientId}`;
     navigator.clipboard.writeText(link);
@@ -61,6 +65,20 @@ export default function AgentDashboard() {
 
   const openProfile = () => {
     window.location.hash = "#/agent/profile";
+  };
+
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value == null) return "-";
+    return `$${value.toLocaleString()}`;
+  };
+
+  const formatDate = (value: string | null | undefined) => {
+    if (!value) return "-";
+    return new Date(value).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   if (!agent && !loading) {
@@ -159,7 +177,7 @@ export default function AgentDashboard() {
           />
         </div>
 
-        {/* Clients table */}
+        {/* Client cards */}
         <div className="mt-4 card overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -178,82 +196,93 @@ export default function AgentDashboard() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-ink-100 bg-ink-50/50 text-left text-xs font-semibold uppercase tracking-wide text-ink-500">
-                    <th className="px-5 py-3">Client</th>
-                    <th className="px-5 py-3">Contact</th>
-                    <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-50">
-                  {filtered.map((c) => (
-                    <tr key={c.id} className="group transition hover:bg-ink-50/60">
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
-                            {c.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-medium text-ink-900">{c.name}</p>
-                            <p className="text-xs text-ink-400">
-                              Added {new Date(c.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col gap-0.5 text-xs text-ink-600">
-                          <span className="flex items-center gap-1.5">
-                            <Mail className="h-3.5 w-3.5 text-ink-400" />
-                            {c.email}
-                          </span>
-                          {c.phone && (
-                            <span className="flex items-center gap-1.5">
-                              <Phone className="h-3.5 w-3.5 text-ink-400" />
-                              {c.phone}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        {c.user_id ? (
-                          <span className="badge bg-brand-100 text-brand-700">
-                            Active
-                          </span>
+            <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+              {filtered.map((c) => {
+                const isRenter = c.client_type === "renter";
+                const profileStatus = c.client_status || (isRenter ? "Searching" : "Active Search");
+
+                return (
+                  <div key={c.id} className="rounded-xl border border-ink-100 bg-white p-5 shadow-soft">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-display text-xl font-semibold text-ink-900">{c.name}</p>
+                        <p className="mt-0.5 text-sm text-ink-500">{isRenter ? "Renter" : "Buyer"}</p>
+                        <p className="mt-2 text-sm text-ink-700">
+                          Status: <span className="font-medium text-ink-900">{profileStatus}</span>
+                        </p>
+                      </div>
+                      {c.user_id ? (
+                        <span className="badge bg-brand-100 text-brand-700">Active</span>
+                      ) : (
+                        <span className="badge bg-gold-100 text-gold-700">Invite sent</span>
+                      )}
+                    </div>
+
+                    <div className="mt-4 space-y-1.5 text-sm text-ink-700">
+                      {isRenter ? (
+                        <>
+                          <p>Budget: <span className="font-medium text-ink-900">{formatCurrency(c.rent_budget)}/mo</span></p>
+                          <p>Move-In: <span className="font-medium text-ink-900">{formatDate(c.desired_move_in_date)}</span></p>
+                          <p>Location: <span className="font-medium text-ink-900">{c.preferred_locations || "-"}</span></p>
+                          <p>Beds/Baths: <span className="font-medium text-ink-900">{c.bedrooms ?? "-"} / {c.bathrooms ?? "-"}</span></p>
+                          <p>Min Sq Ft: <span className="font-medium text-ink-900">{c.min_sqft?.toLocaleString() || "-"}</span></p>
+                          <p>Income: <span className="font-medium text-ink-900">{formatCurrency(c.household_income)}</span></p>
+                          <p>Credit Score: <span className="font-medium text-ink-900">{c.credit_score ?? "-"}</span></p>
+                          <p>Pets: <span className="font-medium text-ink-900">{c.pet_friendly ? "Yes" : "No"}</span></p>
+                        </>
+                      ) : (
+                        <>
+                          <p>Purchase Price: <span className="font-medium text-ink-900">{formatCurrency(c.purchase_price)}</span></p>
+                          <p>Location: <span className="font-medium text-ink-900">{c.preferred_locations || "-"}</span></p>
+                          <p>Beds/Baths: <span className="font-medium text-ink-900">{c.bedrooms ?? "-"} / {c.bathrooms ?? "-"}</span></p>
+                          <p>Min Sq Ft: <span className="font-medium text-ink-900">{c.min_sqft?.toLocaleString() || "-"}</span></p>
+                          <p>School District: <span className="font-medium text-ink-900">{c.school_district || "-"}</span></p>
+                          <p>Pre-Approved: <span className="font-medium text-ink-900">{c.pre_approved ? "Yes" : "No"}</span></p>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => openClientDashboard(c.id)}
+                        className="btn-secondary py-1.5 text-xs"
+                      >
+                        Open <ExternalLink className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => openClientProfile(c.id)}
+                        className="btn-secondary py-1.5 text-xs"
+                      >
+                        Edit Profile
+                      </button>
+                      <button
+                        onClick={() => copyLink(c.id)}
+                        className="btn-ghost py-1.5 text-xs"
+                        title="Copy dashboard link"
+                      >
+                        {copiedId === c.id ? (
+                          <Check className="h-3.5 w-3.5 text-brand-600" />
                         ) : (
-                          <span className="badge bg-gold-100 text-gold-700">
-                            Invite sent
-                          </span>
+                          <Copy className="h-3.5 w-3.5" />
                         )}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => openClientDashboard(c.id)}
-                            className="btn-secondary py-1.5 text-xs"
-                          >
-                            Open <ExternalLink className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => copyLink(c.id)}
-                            className="btn-ghost py-1.5 text-xs"
-                            title="Copy dashboard link"
-                          >
-                            {copiedId === c.id ? (
-                              <Check className="h-3.5 w-3.5 text-brand-600" />
-                            ) : (
-                              <Copy className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </button>
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-0.5 text-xs text-ink-600">
+                      <span className="flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5 text-ink-400" />
+                        {c.email}
+                      </span>
+                      {c.phone && (
+                        <span className="flex items-center gap-1.5">
+                          <Phone className="h-3.5 w-3.5 text-ink-400" />
+                          {c.phone}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

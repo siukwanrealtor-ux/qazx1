@@ -14,9 +14,12 @@ function parseHash(): Route {
   const segments = pathPart.split("/").filter(Boolean);
   const params: Record<string, string> = {};
 
-  // Routes: /, /setup-password, /agent/dashboard, /client/:id
+  // Routes: /, /setup-password, /agent/dashboard, /client/:id, /client/:id/profile
   if (segments[0] === "client" && segments[1]) {
     params.clientId = segments[1];
+    if (segments[2] === "profile") {
+      params.view = "profile";
+    }
   }
 
   return {

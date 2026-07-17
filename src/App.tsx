@@ -6,6 +6,7 @@ import SetupPassword from "./pages/SetupPassword";
 import AgentDashboard from "./pages/AgentDashboard";
 import ClientDashboard from "./pages/ClientDashboard";
 import AgentProfile from "./pages/AgentProfile";
+import ClientProfile from "./pages/ClientProfile";
 import { Loader2 } from "lucide-react";
 
 function Router() {
@@ -55,6 +56,12 @@ function Router() {
   // Setup password route (manual hash)
   if (route.path === "/setup-password") {
     return <SetupPassword />;
+  }
+
+  // Client profile
+  if (route.path.startsWith("/client/") && route.params.clientId && route.params.view === "profile") {
+    if (!session) return <Home />;
+    return <ClientProfile clientId={route.params.clientId} />;
   }
 
   // Client dashboard
