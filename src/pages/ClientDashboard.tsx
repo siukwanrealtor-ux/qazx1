@@ -428,6 +428,10 @@ export default function ClientDashboard({ clientId }: Props) {
             {searches.map((s) => {
               const isOpen = expanded.has(s.id);
               const listings = listingsBySearch[s.id] || [];
+              const groupedListings = CUSTOMER_STATUSES.map((status) => ({
+                status,
+                items: listings.filter((listing) => listing.customer_status === status),
+              })).filter(({ items }) => items.length > 0);
               return (
                 <div key={s.id} className="card overflow-hidden">
                   {/* Search header */}
@@ -474,17 +478,32 @@ export default function ClientDashboard({ clientId }: Props) {
                           No listings in this search yet.
                         </p>
                       ) : (
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                          {listings.map((l) => (
-                            <ListingCard
-                              key={l.id}
-                              listing={l}
-                              onEdit={() => {
-                                setEditingListing(l);
-                                setListingModalSearchId(s.id);
-                              }}
-                              onDelete={() => deleteListing(s.id, l.id)}
-                            />
+                        <div className="space-y-6">
+                          {groupedListings.map(({ status, items }) => (
+                            <div key={status}>
+                              <div className="mb-3 flex items-center justify-between">
+                                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-500">
+                                  {status}
+                                </h3>
+                                <span className="badge bg-ink-100 text-ink-600">
+                                  {items.length} {items.length === 1 ? "listing" : "listings"}
+                                </span>
+                              </div>
+                              <div className="space-y-3">
+                                {items.map((l) => (
+                                  <ListingCard
+                                    key={l.id}
+                                    listing={l}
+                                    compact
+                                    onEdit={() => {
+                                      setEditingListing(l);
+                                      setListingModalSearchId(s.id);
+                                    }}
+                                    onDelete={() => deleteListing(s.id, l.id)}
+                                  />
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
                       )}
@@ -560,13 +579,108 @@ export default function ClientDashboard({ clientId }: Props) {
 
 function ListingCard({
   listing,
+  compact = false,
   onEdit,
   onDelete,
 }: {
   listing: Listing;
+  compact?: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  if (compact) {
+    return (
+      <div className="group overflow-hidden rounded-xl border border-ink-100 bg-white shadow-soft transition hover:shadow-lift">
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-stretch">
+          <div className="relative h-28 w-full flex-shrink-0 overflow-hidden rounded-lg bg-ink-100 sm:w-36">
+            {listing.photo_url ? (
+              <img
+                src={listing.photo_url}
+                alt={listing.address || "Listing"}
+                className="h-full w-full object-cover transition group-hover:scale-105"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-ink-300">
+                <Home className="h-8 w-8" />
+              </div>
+            )}
+            <div className="absolute left-2 top-2">
+              <StatusBadge status={listing.listing_status as ListingStatus} />
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {listing.price != null && (
+                  <p className="font-display text-lg font-semibold text-ink-900">
+                    ${listing.price.toLocaleString()}
+                  </p>
+                )}
+                {listing.address && (
+                  <p className="mt-0.5 flex items-start gap-1 text-xs text-ink-500">
+                    <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{listing.address}</span>
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+                <button
+                  onClick={onEdit}
+                  className="rounded-md bg-ink-50 p-1.5 text-ink-600 hover:bg-ink-100"
+                  title="Edit"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={onDelete}
+                  className="rounded-md bg-ink-50 p-1.5 text-red-500 hover:bg-red-50"
+                  title="Delete"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-600">
+              {listing.beds != null && (
+                <span className="flex items-center gap-1">
+                  <BedDouble className="h-3.5 w-3.5 text-ink-400" />
+                  {listing.beds} bd
+                </span>
+              )}
+              {listing.baths != null && (
+                <span className="flex items-center gap-1">
+                  <Bath className="h-3.5 w-3.5 text-ink-400" />
+                  {listing.baths} ba
+                </span>
+              )}
+              {listing.sqft != null && (
+                <span className="flex items-center gap-1">
+                  <Maximize className="h-3.5 w-3.5 text-ink-400" />
+                  {listing.sqft.toLocaleString()} sqft
+                </span>
+              )}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-ink-50 pt-3">
+              <CustomerBadge status={listing.customer_status as CustomerStatus} />
+              {listing.last_updated && (
+                <span className="text-xs text-ink-400">
+                  Updated {new Date(listing.last_updated).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+
+            {listing.notes && (
+              <p className="mt-2 line-clamp-2 text-xs text-ink-500">{listing.notes}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="group overflow-hidden rounded-xl border border-ink-100 bg-white shadow-soft transition hover:shadow-lift">
       {/* Photo */}
