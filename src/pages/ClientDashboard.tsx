@@ -76,9 +76,6 @@ export default function ClientDashboard({ clientId }: Props) {
   const [loading, setLoading] = useState(true);
   const [showAddSearch, setShowAddSearch] = useState(false);
   const [newSearchName, setNewSearchName] = useState("");
-  const [editingSearchId, setEditingSearchId] = useState<string | null>(null);
-  const [editingSearchName, setEditingSearchName] = useState("");
-  const [savingSearchName, setSavingSearchName] = useState(false);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [listingModalSearchId, setListingModalSearchId] = useState<string | null>(
     null
@@ -180,52 +177,11 @@ export default function ClientDashboard({ clientId }: Props) {
     if (!confirm("Delete this search and all its listings?")) return;
     await supabase.from("searches").delete().eq("id", id);
     setSearches((prev) => prev.filter((s) => s.id !== id));
-    if (editingSearchId === id) {
-      setEditingSearchId(null);
-      setEditingSearchName("");
-    }
     setListingsBySearch((prev) => {
       const next = { ...prev };
       delete next[id];
       return next;
     });
-  };
-
-  const beginEditSearch = (search: Search) => {
-    setEditingSearchId(search.id);
-    setEditingSearchName(search.name);
-  };
-
-  const cancelEditSearch = () => {
-    setEditingSearchId(null);
-    setEditingSearchName("");
-  };
-
-  const saveSearchName = async (search: Search) => {
-    const nextName = editingSearchName.trim();
-    if (!nextName) return;
-    if (nextName === search.name) {
-      cancelEditSearch();
-      return;
-    }
-
-    setSavingSearchName(true);
-    const { error } = await supabase
-      .from("searches")
-      .update({ name: nextName })
-      .eq("id", search.id);
-
-    setSavingSearchName(false);
-
-    if (error) {
-      alert("Failed to update search name.");
-      return;
-    }
-
-    setSearches((prev) =>
-      prev.map((item) => (item.id === search.id ? { ...item, name: nextName } : item))
-    );
-    cancelEditSearch();
   };
 
   const deleteListing = async (searchId: string, id: string) => {
@@ -502,70 +458,21 @@ export default function ClientDashboard({ clientId }: Props) {
                 <div key={s.id} className="card overflow-hidden">
                   {/* Search header */}
                   <div className="flex items-center justify-between border-b border-ink-50 bg-ink-50/40 px-5 py-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <button
-                        onClick={() => toggleExpand(s.id)}
-                        className="btn-ghost p-1 text-ink-500"
-                        title={isOpen ? "Collapse search" : "Expand search"}
-                      >
-                        {isOpen ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                      </button>
-                      {editingSearchId === s.id ? (
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            saveSearchName(s);
-                          }}
-                          className="flex items-center gap-2"
-                        >
-                          <input
-                            className="input h-8 w-56 py-1 text-sm"
-                            value={editingSearchName}
-                            onChange={(e) => setEditingSearchName(e.target.value)}
-                            autoFocus
-                          />
-                          <button
-                            type="submit"
-                            className="btn-secondary py-1 text-xs"
-                            disabled={savingSearchName || !editingSearchName.trim()}
-                          >
-                            Save
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelEditSearch}
-                            className="btn-ghost py-1 text-xs"
-                            disabled={savingSearchName}
-                          >
-                            Cancel
-                          </button>
-                        </form>
+                    <button
+                      onClick={() => toggleExpand(s.id)}
+                      className="flex items-center gap-2 text-left"
+                    >
+                      {isOpen ? (
+                        <ChevronDown className="h-4 w-4 text-ink-500" />
                       ) : (
-                        <button
-                          onClick={() => toggleExpand(s.id)}
-                          className="max-w-[340px] truncate text-left font-medium text-ink-900"
-                          title={s.name}
-                        >
-                          {s.name}
-                        </button>
+                        <ChevronRight className="h-4 w-4 text-ink-500" />
                       )}
+                      <span className="font-medium text-ink-900">{s.name}</span>
                       <span className="badge bg-ink-100 text-ink-600">
                         {listings.length} {listings.length === 1 ? "listing" : "listings"}
                       </span>
-                    </div>
+                    </button>
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => beginEditSearch(s)}
-                        className="btn-ghost p-1.5 text-ink-500 hover:text-ink-800"
-                        title="Rename search"
-                        disabled={editingSearchId === s.id}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
                       <button
                         onClick={() => {
                           setEditingListing(null);
