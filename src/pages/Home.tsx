@@ -32,12 +32,6 @@ export default function Home() {
     );
   }
 
-  if (session) {
-    if (!window.location.hash || window.location.hash === "#/") {
-      window.location.hash = "#/agent/dashboard";
-    }
-  }
-
   const resetState = () => {
     setError(null);
     setMessage(null);
@@ -66,7 +60,7 @@ export default function Home() {
       }
 
       if (data.session) {
-        window.location.hash = "#/agent/dashboard";
+        window.location.hash = "#/";
       }
     } catch (err) {
       setError((err as Error).message);

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { useRouter } from "./lib/router";
+import { supabase } from "./lib/supabase";
 import Home from "./pages/Home";
 import SetupPassword from "./pages/SetupPassword";
 import AgentDashboard from "./pages/AgentDashboard";
@@ -26,20 +27,60 @@ function Router() {
     if (loading) return;
     if (isSetupFlow) return; // Don't redirect during setup flow
 
-    const isProtected =
-      route.path === "/agent/dashboard" ||
-      route.path === "/agent/profile" ||
-      route.path.startsWith("/client/");
+    let cancelled = false;
 
-    if (isProtected && !session) {
-      navigate("/");
-    }
+    const runRouteGuard = async () => {
+      const isProtected =
+        route.path === "/agent/dashboard" ||
+        route.path === "/agent/profile" ||
+        route.path.startsWith("/client/");
 
-    // If logged in and on home, send to dashboard.
-    if (session && route.path === "/") {
-      if (agent) navigate("/agent/dashboard");
-    }
-  }, [route, session, agent, loading, navigate, isSetupFlow]);
+      if (isProtected && !session) {
+        navigate("/");
+        return;
+      }
+
+      if (!session) return;
+
+      const fetchClientPath = async () => {
+        const { data, error } = await supabase
+          .from("clients")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+
+        if (error || !data?.id) return null;
+        return `/client/${data.id}`;
+      };
+
+      if (route.path === "/") {
+        if (agent) {
+          if (!cancelled) navigate("/agent/dashboard");
+          return;
+        }
+
+        const clientPath = await fetchClientPath();
+        if (!cancelled && clientPath) navigate(clientPath);
+        return;
+      }
+
+      const isAgentRoute =
+        route.path === "/agent/dashboard" || route.path === "/agent/profile";
+
+      if (isAgentRoute && !agent) {
+        const clientPath = await fetchClientPath();
+        if (cancelled) return;
+        if (clientPath) navigate(clientPath);
+        else navigate("/");
+      }
+    };
+
+    runRouteGuard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [route.path, session, agent, loading, navigate, isSetupFlow]);
 
   if (loading) {
     return (
