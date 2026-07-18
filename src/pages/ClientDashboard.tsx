@@ -23,6 +23,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import type { Agent, Client, Search, Listing, ListingStatus, CustomerStatus } from "../lib/types";
+import { CUSTOMER_STATUSES } from "../lib/types";
 import ListingModal from "../components/ListingModal";
 import AgentAvatar from "../components/AgentAvatar";
 
