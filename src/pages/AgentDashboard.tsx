@@ -53,7 +53,7 @@ const normalizeClient = (row: Partial<Client>): Client => ({
 });
 
 export default function AgentDashboard() {
-  const { agent, user, signOut, refreshAgent } = useAuth();
+  const { agent, signOut, refreshAgent } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -181,9 +181,6 @@ export default function AgentDashboard() {
                 <p className="mt-0.5 text-sm text-ink-500">{agent?.email}</p>
                 <p className="mt-0.5 text-sm text-ink-500">
                   {formatAgentPhone(agent?.agent_phone_number)}
-                </p>
-                <p className="mt-1 text-xs text-ink-400">
-                  Debug: auth.user.id={user?.id || "-"} | agent.id={agent?.id || "-"} | agent.user_id={agent?.user_id || "-"}
                 </p>
               </div>
             </button>

@@ -23,7 +23,6 @@ import {
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import type { Agent, Client, Search, Listing, ListingStatus, CustomerStatus } from "../lib/types";
-import { CUSTOMER_STATUSES } from "../lib/types";
 import ListingModal from "../components/ListingModal";
 import AgentAvatar from "../components/AgentAvatar";
 
@@ -429,10 +428,6 @@ export default function ClientDashboard({ clientId }: Props) {
             {searches.map((s) => {
               const isOpen = expanded.has(s.id);
               const listings = listingsBySearch[s.id] || [];
-              const groupedListings = CUSTOMER_STATUSES.map((status) => ({
-                status,
-                items: listings.filter((listing) => listing.customer_status === status),
-              })).filter(({ items }) => items.length > 0);
               return (
                 <div key={s.id} className="card overflow-hidden">
                   {/* Search header */}
@@ -479,31 +474,17 @@ export default function ClientDashboard({ clientId }: Props) {
                           No listings in this search yet.
                         </p>
                       ) : (
-                        <div className="space-y-6">
-                          {groupedListings.map(({ status, items }) => (
-                            <div key={status}>
-                              <div className="mb-3 flex items-center justify-between">
-                                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-500">
-                                  {status}
-                                </h3>
-                                <span className="badge bg-ink-100 text-ink-600">
-                                  {items.length} {items.length === 1 ? "listing" : "listings"}
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                {items.map((l) => (
-                                  <ListingCard
-                                    key={l.id}
-                                    listing={l}
-                                    onEdit={() => {
-                                      setEditingListing(l);
-                                      setListingModalSearchId(s.id);
-                                    }}
-                                    onDelete={() => deleteListing(s.id, l.id)}
-                                  />
-                                ))}
-                              </div>
-                            </div>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {listings.map((l) => (
+                            <ListingCard
+                              key={l.id}
+                              listing={l}
+                              onEdit={() => {
+                                setEditingListing(l);
+                                setListingModalSearchId(s.id);
+                              }}
+                              onDelete={() => deleteListing(s.id, l.id)}
+                            />
                           ))}
                         </div>
                       )}

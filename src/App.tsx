@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { useRouter } from "./lib/router";
-import { supabase } from "./lib/supabase";
 import Home from "./pages/Home";
 import SetupPassword from "./pages/SetupPassword";
 import AgentDashboard from "./pages/AgentDashboard";
@@ -27,59 +26,20 @@ function Router() {
     if (loading) return;
     if (isSetupFlow) return; // Don't redirect during setup flow
 
-    let cancelled = false;
+    const isProtected =
+      route.path === "/agent/dashboard" ||
+      route.path === "/agent/profile" ||
+      route.path.startsWith("/client/");
 
-    const runRouteGuard = async () => {
-      const isProtected =
-        route.path === "/agent/dashboard" ||
-        route.path === "/agent/profile";
+    if (isProtected && !session) {
+      navigate("/");
+    }
 
-      if (isProtected && !session) {
-        navigate("/");
-        return;
-      }
-
-      if (!session) return;
-
-      const fetchClientPath = async () => {
-        const { data, error } = await supabase
-          .from("clients")
-          .select("id")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-
-        if (error || !data?.id) return null;
-        return `/client/${data.id}`;
-      };
-
-      if (route.path === "/") {
-        if (agent) {
-          if (!cancelled) navigate("/agent/dashboard");
-          return;
-        }
-
-        const clientPath = await fetchClientPath();
-        if (!cancelled && clientPath) navigate(clientPath);
-        return;
-      }
-
-      const isAgentRoute =
-        route.path === "/agent/dashboard" || route.path === "/agent/profile";
-
-      if (isAgentRoute && !agent) {
-        const clientPath = await fetchClientPath();
-        if (cancelled) return;
-        if (clientPath) navigate(clientPath);
-        else navigate("/");
-      }
-    };
-
-    runRouteGuard();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [route.path, session, agent, loading, navigate, isSetupFlow]);
+    // If logged in and on home, send to dashboard.
+    if (session && route.path === "/") {
+      if (agent) navigate("/agent/dashboard");
+    }
+  }, [route, session, agent, loading, navigate, isSetupFlow]);
 
   if (loading) {
     return (
@@ -118,11 +78,13 @@ function Router() {
 
   // Client profile
   if (route.path.startsWith("/client/") && route.params.clientId && route.params.view === "profile") {
+    if (!session) return <Home />;
     return <ClientProfile clientId={route.params.clientId} />;
   }
 
   // Client dashboard
   if (route.path.startsWith("/client/") && route.params.clientId) {
+    if (!session) return <Home />;
     return <ClientDashboard clientId={route.params.clientId} />;
   }
 
