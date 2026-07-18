@@ -32,8 +32,7 @@ function Router() {
     const runRouteGuard = async () => {
       const isProtected =
         route.path === "/agent/dashboard" ||
-        route.path === "/agent/profile" ||
-        route.path.startsWith("/client/");
+        route.path === "/agent/profile";
 
       if (isProtected && !session) {
         navigate("/");
@@ -119,13 +118,11 @@ function Router() {
 
   // Client profile
   if (route.path.startsWith("/client/") && route.params.clientId && route.params.view === "profile") {
-    if (!session) return <Home />;
     return <ClientProfile clientId={route.params.clientId} />;
   }
 
   // Client dashboard
   if (route.path.startsWith("/client/") && route.params.clientId) {
-    if (!session) return <Home />;
     return <ClientDashboard clientId={route.params.clientId} />;
   }
 
