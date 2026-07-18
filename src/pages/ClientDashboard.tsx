@@ -23,6 +23,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import type { Agent, Client, Search, Listing, ListingStatus, CustomerStatus } from "../lib/types";
+import { CUSTOMER_STATUSES } from "../lib/types";
 import ListingModal from "../components/ListingModal";
 import AgentAvatar from "../components/AgentAvatar";
 
@@ -428,6 +429,31 @@ export default function ClientDashboard({ clientId }: Props) {
             {searches.map((s) => {
               const isOpen = expanded.has(s.id);
               const listings = listingsBySearch[s.id] || [];
+              const groupedListings = (() => {
+                const groups = new Map<string, Listing[]>();
+
+                listings.forEach((listing) => {
+                  const rawStatus = (listing.customer_status || "").trim();
+                  const status = rawStatus || "Uncategorized";
+                  const existing = groups.get(status) || [];
+                  existing.push(listing);
+                  groups.set(status, existing);
+                });
+
+                const orderedKnown = CUSTOMER_STATUSES.filter((status) => groups.has(status)).map(
+                  (status) => ({
+                    status,
+                    items: groups.get(status) || [],
+                  })
+                );
+
+                const unknown = Array.from(groups.entries())
+                  .filter(([status]) => !CUSTOMER_STATUSES.includes(status as CustomerStatus))
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([status, items]) => ({ status, items }));
+
+                return [...orderedKnown, ...unknown];
+              })();
               return (
                 <div key={s.id} className="card overflow-hidden">
                   {/* Search header */}
@@ -474,17 +500,31 @@ export default function ClientDashboard({ clientId }: Props) {
                           No listings in this search yet.
                         </p>
                       ) : (
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                          {listings.map((l) => (
-                            <ListingCard
-                              key={l.id}
-                              listing={l}
-                              onEdit={() => {
-                                setEditingListing(l);
-                                setListingModalSearchId(s.id);
-                              }}
-                              onDelete={() => deleteListing(s.id, l.id)}
-                            />
+                        <div className="space-y-6">
+                          {groupedListings.map(({ status, items }) => (
+                            <div key={status}>
+                              <div className="mb-3 flex items-center justify-between">
+                                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-500">
+                                  {status}
+                                </h3>
+                                <span className="badge bg-ink-100 text-ink-600">
+                                  {items.length} {items.length === 1 ? "listing" : "listings"}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {items.map((l) => (
+                                  <ListingCard
+                                    key={l.id}
+                                    listing={l}
+                                    onEdit={() => {
+                                      setEditingListing(l);
+                                      setListingModalSearchId(s.id);
+                                    }}
+                                    onDelete={() => deleteListing(s.id, l.id)}
+                                  />
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
                       )}
