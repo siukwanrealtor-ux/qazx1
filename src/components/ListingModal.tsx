@@ -1,6 +1,5 @@
 import { useState, FormEvent } from "react";
 import { X, Loader2, ImageIcon } from "lucide-react";
-import { supabase } from "../lib/supabase";
 import type { Listing, ListingStatus, CustomerStatus } from "../lib/types";
 import { LISTING_STATUSES, CUSTOMER_STATUSES } from "../lib/types";
 
@@ -60,14 +59,25 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
       notes: form.notes || null,
     };
 
-    const mutation = listing
-      ? supabase.from("listings").update(payload).eq("id", listing.id)
-      : supabase.from("listings").insert(payload);
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/listings${
+      listing ? `?id=eq.${listing.id}` : ""
+    }`;
+    const method = listing ? "PATCH" : "POST";
 
-    const { error } = await mutation;
+    const res = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        Prefer: listing ? "return=minimal" : "return=minimal",
+      },
+      body: JSON.stringify(payload),
+    });
 
-    if (error) {
-      setError(error.message || "Failed to save listing");
+    if (!res.ok) {
+      const txt = await res.text();
+      setError(txt || "Failed to save listing");
       setSubmitting(false);
       return;
     }
