@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
-import type { Agent, Client, Search, Listing, ListingStatus, CustomerStatus } from "../lib/types";
+import type { Agent, Client, Search, Listing, CustomerStatus } from "../lib/types";
 import ListingModal from "../components/ListingModal";
 import AgentAvatar from "../components/AgentAvatar";
 
@@ -613,7 +613,6 @@ function ListingCard({
               ${listing.price.toLocaleString()}
             </span>
           )}
-          <StatusBadge status={listing.listing_status as ListingStatus} />
           {listing.address && (
             <span className="flex min-w-0 items-start gap-0.5 text-xs text-ink-500">
               <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0" />
@@ -693,17 +692,6 @@ function ListingCard({
   );
 }
 
-function StatusBadge({ status }: { status: ListingStatus }) {
-  const colors: Record<ListingStatus, string> = {
-    Active: "bg-brand-500 text-white",
-    Pending: "bg-gold-400 text-ink-900",
-    Sold: "bg-ink-700 text-white",
-    "Off Market": "bg-ink-400 text-white",
-    "Coming Soon": "bg-blue-500 text-white",
-  };
-  return <span className={`badge ${colors[status]}`}>{status}</span>;
-}
-
 function CustomerBadge({ status }: { status: CustomerStatus }) {
   const colors: Record<CustomerStatus, string> = {
     "New Lead": "bg-blue-100 text-blue-700",
@@ -711,6 +699,7 @@ function CustomerBadge({ status }: { status: CustomerStatus }) {
     Interested: "bg-brand-100 text-brand-700",
     "Not Interested": "bg-ink-100 text-ink-600",
     "Under Contract": "bg-purple-100 text-purple-700",
+    Sold: "bg-ink-700 text-white",
   };
   return <span className={`badge ${colors[status]}`}>{status}</span>;
 }

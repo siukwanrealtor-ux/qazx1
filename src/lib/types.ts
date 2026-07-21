@@ -62,7 +62,6 @@ export interface Listing {
   baths: number | null;
   sqft: number | null;
   lot_size: string | null;
-  listing_status: string;
   last_updated: string | null;
   customer_status: string;
   notes: string | null;
@@ -70,27 +69,13 @@ export interface Listing {
   created_at: string;
 }
 
-export type ListingStatus =
-  | "Active"
-  | "Pending"
-  | "Sold"
-  | "Off Market"
-  | "Coming Soon";
-
 export type CustomerStatus =
   | "New Lead"
   | "Touring"
   | "Interested"
   | "Not Interested"
-  | "Under Contract";
-
-export const LISTING_STATUSES: ListingStatus[] = [
-  "Active",
-  "Pending",
-  "Sold",
-  "Off Market",
-  "Coming Soon",
-];
+  | "Under Contract"
+  | "Sold";
 
 export const CUSTOMER_STATUSES: CustomerStatus[] = [
   "New Lead",
@@ -98,4 +83,5 @@ export const CUSTOMER_STATUSES: CustomerStatus[] = [
   "Interested",
   "Not Interested",
   "Under Contract",
+  "Sold",
 ];

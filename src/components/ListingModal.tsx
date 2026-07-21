@@ -1,8 +1,8 @@
 import { useState, FormEvent } from "react";
 import { X, Loader2, ImageIcon, ExternalLink } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import type { Listing, ListingStatus, CustomerStatus } from "../lib/types";
-import { LISTING_STATUSES, CUSTOMER_STATUSES } from "../lib/types";
+import type { Listing, CustomerStatus } from "../lib/types";
+import { CUSTOMER_STATUSES } from "../lib/types";
 
 interface Props {
   listing: Listing | null;
@@ -20,7 +20,6 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
     baths: listing?.baths?.toString() || "",
     sqft: listing?.sqft?.toString() || "",
     lot_size: listing?.lot_size || "",
-    listing_status: (listing?.listing_status as ListingStatus) || "Active",
     customer_status: (listing?.customer_status as CustomerStatus) || "New Lead",
     notes: listing?.notes || "",
     source_url: listing?.source_url || "",
@@ -45,7 +44,6 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
       baths: form.baths ? parseFloat(form.baths) : null,
       sqft: form.sqft ? parseInt(form.sqft) : null,
       lot_size: form.lot_size || null,
-      listing_status: form.listing_status,
       last_updated: new Date().toISOString(),
       customer_status: form.customer_status,
       notes: form.notes || null,
@@ -178,35 +176,19 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Listing status</label>
-              <select
-                className="input"
-                value={form.listing_status}
-                onChange={(e) => update("listing_status", e.target.value)}
-              >
-                {LISTING_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="label">Customer status</label>
-              <select
-                className="input"
-                value={form.customer_status}
-                onChange={(e) => update("customer_status", e.target.value)}
-              >
-                {CUSTOMER_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="label">Customer status</label>
+            <select
+              className="input"
+              value={form.customer_status}
+              onChange={(e) => update("customer_status", e.target.value)}
+            >
+              {CUSTOMER_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
