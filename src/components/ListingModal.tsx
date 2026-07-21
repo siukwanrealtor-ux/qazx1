@@ -44,7 +44,6 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
       baths: form.baths ? parseFloat(form.baths) : null,
       sqft: form.sqft ? parseInt(form.sqft) : null,
       lot_size: form.lot_size || null,
-      last_updated: new Date().toISOString(),
       customer_status: form.customer_status,
       notes: form.notes || null,
       source_url: form.source_url || null,

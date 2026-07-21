@@ -138,7 +138,7 @@ export default function ClientDashboard({ clientId }: Props) {
           .from("listings")
           .select("*")
           .eq("search_id", s.id)
-          .order("created_at", { ascending: false });
+          .order("updated_at", { ascending: false });
         map[s.id] = (ldata as Listing[]) || [];
       })
     );
@@ -154,7 +154,7 @@ export default function ClientDashboard({ clientId }: Props) {
       .from("listings")
       .select("*")
       .eq("search_id", searchId)
-      .order("created_at", { ascending: false });
+      .order("updated_at", { ascending: false });
     setListingsBySearch((prev) => ({
       ...prev,
       [searchId]: (data as Listing[]) || [],
@@ -502,8 +502,8 @@ export default function ClientDashboard({ clientId }: Props) {
                               .filter((l) => (l.customer_status as CustomerStatus) === status)
                               .slice()
                               .sort((a, b) => {
-                                const ad = a.last_updated ? new Date(a.last_updated).getTime() : 0;
-                                const bd = b.last_updated ? new Date(b.last_updated).getTime() : 0;
+                                const ad = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+                                const bd = b.updated_at ? new Date(b.updated_at).getTime() : 0;
                                 return bd - ad;
                               });
                             if (group.length === 0) return null;
@@ -683,9 +683,9 @@ function ListingCard({
               View listing
             </a>
           )}
-          {listing.last_updated && (
+          {listing.updated_at && (
             <span className="ml-auto text-xs text-ink-400">
-              {new Date(listing.last_updated).toLocaleDateString()}
+              {new Date(listing.updated_at).toLocaleDateString()}
             </span>
           )}
         </div>

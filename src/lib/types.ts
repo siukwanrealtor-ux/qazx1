@@ -63,6 +63,7 @@ export interface Listing {
   sqft: number | null;
   lot_size: string | null;
   last_updated: string | null;
+  updated_at: string;
   customer_status: string;
   notes: string | null;
   source_url: string | null;
