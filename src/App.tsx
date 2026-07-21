@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
 
 function Router() {
   const { route, navigate } = useRouter();
-  const { session, agent, loading } = useAuth();
+  const { session, agent, client, loading } = useAuth();
 
   // Detect the password-setup flow: Supabase redirects back to
   // ?action=setup with auth tokens in the URL hash (#access_token=...).
@@ -35,9 +35,10 @@ function Router() {
       navigate("/");
     }
 
-    // If logged in and on home, send to dashboard.
+    // If logged in and on home, send to the right dashboard.
     if (session && route.path === "/") {
       if (agent) navigate("/agent/dashboard");
+      else if (client) navigate(`/client/${client.id}`);
     }
   }, [route, session, agent, loading, navigate, isSetupFlow]);
 

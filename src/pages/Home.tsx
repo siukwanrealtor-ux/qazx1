@@ -15,7 +15,7 @@ import { useAuth } from "../lib/auth";
 type Mode = "signin" | "signup" | "forgot";
 
 export default function Home() {
-  const { session, loading } = useAuth();
+  const { session, agent, client, loading } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,7 +34,11 @@ export default function Home() {
 
   if (session) {
     if (!window.location.hash || window.location.hash === "#/") {
-      window.location.hash = "#/agent/dashboard";
+      if (agent) {
+        window.location.hash = "#/agent/dashboard";
+      } else if (client) {
+        window.location.hash = `#/client/${client.id}`;
+      }
     }
   }
 
@@ -65,9 +69,8 @@ export default function Home() {
         return;
       }
 
-      if (data.session) {
-        window.location.hash = "#/agent/dashboard";
-      }
+      // No explicit redirect here — onAuthStateChange loads agent/client
+      // and the Home re-render routes to the right dashboard.
     } catch (err) {
       setError((err as Error).message);
     } finally {
