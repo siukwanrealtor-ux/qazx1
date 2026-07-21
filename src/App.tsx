@@ -8,6 +8,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import AgentProfile from "./pages/AgentProfile";
 import ClientProfile from "./pages/ClientProfile";
 import LegalPage from "./pages/LegalPage";
+import WhatsAppSupport from "./components/WhatsAppSupport";
 import { Loader2 } from "lucide-react";
 
 function Router() {
@@ -109,6 +110,7 @@ function App() {
   return (
     <AuthProvider>
       <Router />
+      <WhatsAppSupport />
     </AuthProvider>
   );
 }
