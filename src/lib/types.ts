@@ -38,6 +38,9 @@ export interface Client {
   pet_friendly: boolean | null;
   household_income: number | null;
   credit_score: number | null;
+  other_information: string | null;
+  occupants: number | null;
+  adults: number | null;
   created_at: string;
 }
 

@@ -6,7 +6,7 @@ import type { Client } from "../lib/types";
 
 const CLIENT_BASE_SELECT = "id,agent_id,user_id,name,phone,email,created_at";
 const CLIENT_PROFILE_SELECT =
-  "id,agent_id,user_id,name,phone,email,created_at,client_type,client_status,purchase_price,rent_budget,desired_move_in_date,preferred_locations,bedrooms,bathrooms,min_sqft,school_district,pre_approved,pet_friendly,household_income,credit_score";
+  "id,agent_id,user_id,name,phone,email,created_at,client_type,client_status,purchase_price,rent_budget,desired_move_in_date,preferred_locations,bedrooms,bathrooms,min_sqft,school_district,pre_approved,pet_friendly,household_income,credit_score,other_information,occupants,adults";
 
 const hasSchemaColumnError = (message?: string) => {
   if (!message) return false;
@@ -34,6 +34,9 @@ const normalizeClient = (row: Partial<Client>): Client => ({
   pet_friendly: row.pet_friendly ?? null,
   household_income: row.household_income ?? null,
   credit_score: row.credit_score ?? null,
+  other_information: row.other_information ?? null,
+  occupants: row.occupants ?? null,
+  adults: row.adults ?? null,
   created_at: row.created_at || "",
 });
 
@@ -77,6 +80,9 @@ export default function ClientProfile({ clientId }: Props) {
   const [petFriendly, setPetFriendly] = useState(false);
   const [householdIncome, setHouseholdIncome] = useState("");
   const [creditScore, setCreditScore] = useState("");
+  const [otherInformation, setOtherInformation] = useState("");
+  const [occupants, setOccupants] = useState("");
+  const [adults, setAdults] = useState("");
 
   const loadClient = async () => {
     setLoading(true);
@@ -124,6 +130,9 @@ export default function ClientProfile({ clientId }: Props) {
     setPetFriendly(Boolean(c.pet_friendly));
     setHouseholdIncome(c.household_income != null ? String(c.household_income) : "");
     setCreditScore(c.credit_score != null ? String(c.credit_score) : "");
+    setOtherInformation(c.other_information || "");
+    setOccupants(c.occupants != null ? String(c.occupants) : "");
+    setAdults(c.adults != null ? String(c.adults) : "");
     setLoading(false);
   };
 
@@ -171,6 +180,9 @@ export default function ClientProfile({ clientId }: Props) {
       pet_friendly: clientType === "renter" ? petFriendly : null,
       household_income: clientType === "renter" ? toNumberOrNull(householdIncome) : null,
       credit_score: clientType === "renter" ? toNumberOrNull(creditScore) : null,
+      other_information: otherInformation.trim() || null,
+      occupants: clientType === "renter" ? toNumberOrNull(occupants) : null,
+      adults: clientType === "renter" ? toNumberOrNull(adults) : null,
     };
 
     let { error } = await supabase.from("clients").update(profilePayload).eq("id", clientId);
@@ -474,8 +486,48 @@ export default function ClientProfile({ clientId }: Props) {
                       />
                       Pet-friendly
                     </label>
+                    <div>
+                      <label className="label">Occupants</label>
+                      <input
+                        className="input"
+                        type="number"
+                        min="1"
+                        value={occupants}
+                        onChange={(e) => setOccupants(e.target.value)}
+                        placeholder="Total number of people"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">How many adults</label>
+                      <input
+                        className="input"
+                        type="number"
+                        min="0"
+                        value={adults}
+                        onChange={(e) => setAdults(e.target.value)}
+                        placeholder="Number of adults"
+                      />
+                    </div>
                   </>
                 )}
+              </div>
+            </section>
+
+            {/* Other information — shared by buyer and renter */}
+            <section className="card p-6">
+              <h2 className="font-display text-xl font-semibold text-ink-900">
+                Other Information
+              </h2>
+              <p className="mt-1 text-sm text-ink-500">
+                Any additional details that don't fit the structured criteria above.
+              </p>
+              <div className="mt-4">
+                <textarea
+                  className="input min-h-[100px] resize-y"
+                  value={otherInformation}
+                  onChange={(e) => setOtherInformation(e.target.value)}
+                  placeholder="Accessibility needs, preferred view, HOA requirements, etc."
+                />
               </div>
             </section>
 

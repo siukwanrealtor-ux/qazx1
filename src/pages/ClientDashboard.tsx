@@ -28,7 +28,7 @@ import AgentAvatar from "../components/AgentAvatar";
 
 const CLIENT_BASE_SELECT = "id,agent_id,user_id,name,phone,email,created_at";
 const CLIENT_PROFILE_SELECT =
-  "id,agent_id,user_id,name,phone,email,created_at,client_type,client_status,purchase_price,rent_budget,desired_move_in_date,preferred_locations,bedrooms,bathrooms,min_sqft,school_district,pre_approved,pet_friendly,household_income,credit_score";
+  "id,agent_id,user_id,name,phone,email,created_at,client_type,client_status,purchase_price,rent_budget,desired_move_in_date,preferred_locations,bedrooms,bathrooms,min_sqft,school_district,pre_approved,pet_friendly,household_income,credit_score,other_information,occupants,adults";
 
 const hasSchemaColumnError = (message?: string) => {
   if (!message) return false;
@@ -56,6 +56,9 @@ const normalizeClient = (row: Partial<Client>): Client => ({
   pet_friendly: row.pet_friendly ?? null,
   household_income: row.household_income ?? null,
   credit_score: row.credit_score ?? null,
+  other_information: row.other_information ?? null,
+  occupants: row.occupants ?? null,
+  adults: row.adults ?? null,
   created_at: row.created_at || "",
 });
 
@@ -384,6 +387,8 @@ export default function ClientDashboard({ clientId }: Props) {
                 <p>Income: <span className="font-medium text-ink-900">{formatCurrency(client.household_income)}</span></p>
                 <p>Credit Score: <span className="font-medium text-ink-900">{client.credit_score ?? "-"}</span></p>
                 <p>Pets: <span className="font-medium text-ink-900">{client.pet_friendly ? "Yes" : "No"}</span></p>
+                <p>Occupants: <span className="font-medium text-ink-900">{client.occupants ?? "-"}</span></p>
+                <p>Adults: <span className="font-medium text-ink-900">{client.adults ?? "-"}</span></p>
               </div>
             ) : (
               <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-2">
@@ -393,6 +398,17 @@ export default function ClientDashboard({ clientId }: Props) {
                 <p>Min Sq Ft: <span className="font-medium text-ink-900">{client.min_sqft?.toLocaleString() || "-"}</span></p>
                 <p>School District: <span className="font-medium text-ink-900">{client.school_district || "-"}</span></p>
                 <p>Pre-Approved: <span className="font-medium text-ink-900">{client.pre_approved ? "Yes" : "No"}</span></p>
+              </div>
+            )}
+
+            {client.other_information && (
+              <div className="mt-4 border-t border-ink-50 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-400">
+                  Other Information
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-ink-700">
+                  {client.other_information}
+                </p>
               </div>
             )}
           </div>
