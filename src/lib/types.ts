@@ -29,6 +29,7 @@ export interface Client {
   purchase_price: number | null;
   rent_budget: number | null;
   desired_move_in_date: string | null;
+  desired_purchase_date: string | null;
   preferred_locations: string | null;
   bedrooms: number | null;
   bathrooms: number | null;

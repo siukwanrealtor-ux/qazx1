@@ -28,7 +28,7 @@ import AgentAvatar from "../components/AgentAvatar";
 
 const CLIENT_BASE_SELECT = "id,agent_id,user_id,name,phone,email,created_at";
 const CLIENT_PROFILE_SELECT =
-  "id,agent_id,user_id,name,phone,email,created_at,client_type,client_status,purchase_price,rent_budget,desired_move_in_date,preferred_locations,bedrooms,bathrooms,min_sqft,school_district,pre_approved,pet_friendly,household_income,credit_score,other_information,occupants,adults";
+  "id,agent_id,user_id,name,phone,email,created_at,client_type,client_status,purchase_price,rent_budget,desired_move_in_date,desired_purchase_date,preferred_locations,bedrooms,bathrooms,min_sqft,school_district,pre_approved,pet_friendly,household_income,credit_score,other_information,occupants,adults";
 
 const hasSchemaColumnError = (message?: string) => {
   if (!message) return false;
@@ -47,6 +47,7 @@ const normalizeClient = (row: Partial<Client>): Client => ({
   purchase_price: row.purchase_price ?? null,
   rent_budget: row.rent_budget ?? null,
   desired_move_in_date: row.desired_move_in_date ?? null,
+  desired_purchase_date: row.desired_purchase_date ?? null,
   preferred_locations: row.preferred_locations ?? null,
   bedrooms: row.bedrooms ?? null,
   bathrooms: row.bathrooms ?? null,
@@ -398,6 +399,7 @@ export default function ClientDashboard({ clientId }: Props) {
                 <p>Min Sq Ft: <span className="font-medium text-ink-900">{client.min_sqft?.toLocaleString() || "-"}</span></p>
                 <p>School District: <span className="font-medium text-ink-900">{client.school_district || "-"}</span></p>
                 <p>Pre-Approved: <span className="font-medium text-ink-900">{client.pre_approved ? "Yes" : "No"}</span></p>
+                <p>Desired Purchase Date: <span className="font-medium text-ink-900">{formatDate(client.desired_purchase_date)}</span></p>
               </div>
             )}
 

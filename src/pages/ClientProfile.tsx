@@ -6,7 +6,7 @@ import type { Client } from "../lib/types";
 
 const CLIENT_BASE_SELECT = "id,agent_id,user_id,name,phone,email,created_at";
 const CLIENT_PROFILE_SELECT =
-  "id,agent_id,user_id,name,phone,email,created_at,client_type,client_status,purchase_price,rent_budget,desired_move_in_date,preferred_locations,bedrooms,bathrooms,min_sqft,school_district,pre_approved,pet_friendly,household_income,credit_score,other_information,occupants,adults";
+  "id,agent_id,user_id,name,phone,email,created_at,client_type,client_status,purchase_price,rent_budget,desired_move_in_date,desired_purchase_date,preferred_locations,bedrooms,bathrooms,min_sqft,school_district,pre_approved,pet_friendly,household_income,credit_score,other_information,occupants,adults";
 
 const hasSchemaColumnError = (message?: string) => {
   if (!message) return false;
@@ -25,6 +25,7 @@ const normalizeClient = (row: Partial<Client>): Client => ({
   purchase_price: row.purchase_price ?? null,
   rent_budget: row.rent_budget ?? null,
   desired_move_in_date: row.desired_move_in_date ?? null,
+  desired_purchase_date: row.desired_purchase_date ?? null,
   preferred_locations: row.preferred_locations ?? null,
   bedrooms: row.bedrooms ?? null,
   bathrooms: row.bathrooms ?? null,
@@ -71,6 +72,7 @@ export default function ClientProfile({ clientId }: Props) {
   const [purchasePrice, setPurchasePrice] = useState("");
   const [rentBudget, setRentBudget] = useState("");
   const [desiredMoveInDate, setDesiredMoveInDate] = useState("");
+  const [desiredPurchaseDate, setDesiredPurchaseDate] = useState("");
   const [preferredLocations, setPreferredLocations] = useState("");
   const [bedrooms, setBedrooms] = useState("");
   const [bathrooms, setBathrooms] = useState("");
@@ -121,6 +123,7 @@ export default function ClientProfile({ clientId }: Props) {
     setPurchasePrice(c.purchase_price != null ? String(c.purchase_price) : "");
     setRentBudget(c.rent_budget != null ? String(c.rent_budget) : "");
     setDesiredMoveInDate(c.desired_move_in_date || "");
+    setDesiredPurchaseDate(c.desired_purchase_date || "");
     setPreferredLocations(c.preferred_locations || "");
     setBedrooms(c.bedrooms != null ? String(c.bedrooms) : "");
     setBathrooms(c.bathrooms != null ? String(c.bathrooms) : "");
@@ -171,6 +174,7 @@ export default function ClientProfile({ clientId }: Props) {
       purchase_price: clientType === "buyer" ? toNumberOrNull(purchasePrice) : null,
       rent_budget: clientType === "renter" ? toNumberOrNull(rentBudget) : null,
       desired_move_in_date: clientType === "renter" ? desiredMoveInDate || null : null,
+      desired_purchase_date: clientType === "buyer" ? desiredPurchaseDate || null : null,
       preferred_locations: preferredLocations.trim() || null,
       bedrooms: toNumberOrNull(bedrooms),
       bathrooms: toNumberOrNull(bathrooms),
@@ -377,6 +381,18 @@ export default function ClientProfile({ clientId }: Props) {
                       type="date"
                       value={desiredMoveInDate}
                       onChange={(e) => setDesiredMoveInDate(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {clientType === "buyer" && (
+                  <div>
+                    <label className="label">Desired Purchase Date</label>
+                    <input
+                      className="input"
+                      type="date"
+                      value={desiredPurchaseDate}
+                      onChange={(e) => setDesiredPurchaseDate(e.target.value)}
                     />
                   </div>
                 )}
