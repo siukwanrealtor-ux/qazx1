@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { X, Loader2, ImageIcon } from "lucide-react";
+import { X, Loader2, ImageIcon, ExternalLink } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import type { Listing, ListingStatus, CustomerStatus } from "../lib/types";
 import { LISTING_STATUSES, CUSTOMER_STATUSES } from "../lib/types";
@@ -221,13 +221,27 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
 
           <div>
             <label className="label">Source URL</label>
-            <input
-              className="input"
-              type="url"
-              value={form.source_url}
-              onChange={(e) => update("source_url", e.target.value)}
-              placeholder="https://www.zillow.com/…"
-            />
+            <div className="flex gap-2">
+              <input
+                className="input flex-1"
+                type="url"
+                value={form.source_url}
+                onChange={(e) => update("source_url", e.target.value)}
+                placeholder="https://www.zillow.com/…"
+              />
+              {form.source_url && (
+                <a
+                  href={form.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-secondary flex items-center gap-1.5 whitespace-nowrap"
+                  title="Open in new window"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open
+                </a>
+              )}
+            </div>
             <p className="mt-1.5 text-xs text-ink-500">
               Link this listing to its source page so clients can view full details.
             </p>
