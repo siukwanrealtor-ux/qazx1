@@ -24,6 +24,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import type { Agent, Client, Search, Listing, CustomerStatus } from "../lib/types";
+import { CUSTOMER_STATUSES } from "../lib/types";
 import ListingModal from "../components/ListingModal";
 import AgentAvatar from "../components/AgentAvatar";
 
@@ -495,18 +496,41 @@ export default function ClientDashboard({ clientId }: Props) {
                           No listings in this search yet.
                         </p>
                       ) : (
-                        <div className="space-y-2">
-                          {listings.map((l) => (
-                            <ListingCard
-                              key={l.id}
-                              listing={l}
-                              onEdit={() => {
-                                setEditingListing(l);
-                                setListingModalSearchId(s.id);
-                              }}
-                              onDelete={() => deleteListing(s.id, l.id)}
-                            />
-                          ))}
+                        <div className="space-y-4">
+                          {CUSTOMER_STATUSES.map((status) => {
+                            const group = listings
+                              .filter((l) => (l.customer_status as CustomerStatus) === status)
+                              .slice()
+                              .sort((a, b) => {
+                                const ad = a.last_updated ? new Date(a.last_updated).getTime() : 0;
+                                const bd = b.last_updated ? new Date(b.last_updated).getTime() : 0;
+                                return bd - ad;
+                              });
+                            if (group.length === 0) return null;
+                            return (
+                              <div key={status}>
+                                <div className="mb-2 flex items-center gap-2">
+                                  <CustomerBadge status={status} />
+                                  <span className="text-xs font-medium text-ink-400">
+                                    {group.length} {group.length === 1 ? "listing" : "listings"}
+                                  </span>
+                                </div>
+                                <div className="space-y-2">
+                                  {group.map((l) => (
+                                    <ListingCard
+                                      key={l.id}
+                                      listing={l}
+                                      onEdit={() => {
+                                        setEditingListing(l);
+                                        setListingModalSearchId(s.id);
+                                      }}
+                                      onDelete={() => deleteListing(s.id, l.id)}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
