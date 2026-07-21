@@ -4,15 +4,6 @@ import { supabase } from "../lib/supabase";
 import type { Listing, ListingStatus, CustomerStatus } from "../lib/types";
 import { LISTING_STATUSES, CUSTOMER_STATUSES } from "../lib/types";
 
-const STOCK_PHOTOS = [
-  "https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg?auto=compress&w=800",
-  "https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&w=800",
-  "https://images.pexels.com/photos/1396132/pexels-photo-1396132.jpeg?auto=compress&w=800",
-  "https://images.pexels.com/photos/259588/pexels-photo-259588.jpeg?auto=compress&w=800",
-  "https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg?auto=compress&w=800",
-  "https://images.pexels.com/photos/53610/large-pexels-photo-53610.jpeg?auto=compress&w=800",
-];
-
 interface Props {
   listing: Listing | null;
   searchId: string;
@@ -33,6 +24,7 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
     last_updated: listing?.last_updated || new Date().toISOString().slice(0, 10),
     customer_status: (listing?.customer_status as CustomerStatus) || "New Lead",
     notes: listing?.notes || "",
+    source_url: listing?.source_url || "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +50,7 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
       last_updated: form.last_updated || null,
       customer_status: form.customer_status,
       notes: form.notes || null,
+      source_url: form.source_url || null,
     };
 
     let error: { message?: string } | null = null;
@@ -114,22 +107,13 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
                 onChange={(e) => update("photo_url", e.target.value)}
               />
             </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {STOCK_PHOTOS.map((url) => (
-                <button
-                  key={url}
-                  type="button"
-                  onClick={() => update("photo_url", url)}
-                  className={`h-10 w-14 overflow-hidden rounded-md border-2 transition ${
-                    form.photo_url === url
-                      ? "border-brand-500"
-                      : "border-transparent hover:border-ink-200"
-                  }`}
-                >
-                  <img src={url} alt="" className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
+            <p className="mt-2 text-xs text-ink-500">
+              Tip: copy a listing's photo URL from sites like{" "}
+              <a href="https://www.zillow.com" target="_blank" rel="noreferrer" className="text-brand-600 hover:text-brand-700">Zillow.com</a>{" "}
+              or{" "}
+              <a href="https://www.realtor.com" target="_blank" rel="noreferrer" className="text-brand-600 hover:text-brand-700">Realtor.com</a>{" "}
+              and paste it above.
+            </p>
           </div>
 
           <div>
@@ -233,6 +217,20 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
                 ))}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="label">Source URL</label>
+            <input
+              className="input"
+              type="url"
+              value={form.source_url}
+              onChange={(e) => update("source_url", e.target.value)}
+              placeholder="https://www.zillow.com/…"
+            />
+            <p className="mt-1.5 text-xs text-ink-500">
+              Link this listing to its source page so clients can view full details.
+            </p>
           </div>
 
           <div>

@@ -19,6 +19,7 @@ import {
   Globe,
   Mail,
   Phone,
+  ExternalLink,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
@@ -635,6 +636,18 @@ function ListingCard({
             <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0" />
             {listing.address}
           </p>
+        )}
+
+        {listing.source_url && (
+          <a
+            href={listing.source_url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-brand-50 px-2.5 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            View listing
+          </a>
         )}
 
         {/* Specs */}

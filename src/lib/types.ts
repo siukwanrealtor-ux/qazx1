@@ -66,6 +66,7 @@ export interface Listing {
   last_updated: string | null;
   customer_status: string;
   notes: string | null;
+  source_url: string | null;
   created_at: string;
 }
 
