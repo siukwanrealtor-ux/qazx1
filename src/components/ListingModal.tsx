@@ -21,7 +21,6 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
     sqft: listing?.sqft?.toString() || "",
     lot_size: listing?.lot_size || "",
     listing_status: (listing?.listing_status as ListingStatus) || "Active",
-    last_updated: listing?.last_updated || new Date().toISOString().slice(0, 10),
     customer_status: (listing?.customer_status as CustomerStatus) || "New Lead",
     notes: listing?.notes || "",
     source_url: listing?.source_url || "",
@@ -47,7 +46,7 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
       sqft: form.sqft ? parseInt(form.sqft) : null,
       lot_size: form.lot_size || null,
       listing_status: form.listing_status,
-      last_updated: form.last_updated || null,
+      last_updated: new Date().toISOString(),
       customer_status: form.customer_status,
       notes: form.notes || null,
       source_url: form.source_url || null,
@@ -175,15 +174,6 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
                 value={form.lot_size}
                 onChange={(e) => update("lot_size", e.target.value)}
                 placeholder="0.25 acres"
-              />
-            </div>
-            <div>
-              <label className="label">Last updated</label>
-              <input
-                className="input"
-                type="date"
-                value={form.last_updated}
-                onChange={(e) => update("last_updated", e.target.value)}
               />
             </div>
           </div>
