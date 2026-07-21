@@ -603,19 +603,17 @@ function ListingCard({
             <Home className="h-6 w-6" />
           </div>
         )}
-        <div className="absolute left-1 top-1">
-          <StatusBadge status={listing.listing_status as ListingStatus} />
-        </div>
       </div>
 
       {/* Body */}
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-x-2">
+        <div className="flex flex-wrap items-center gap-x-2">
           {listing.price != null && (
             <span className="font-display text-base font-semibold text-ink-900">
               ${listing.price.toLocaleString()}
             </span>
           )}
+          <StatusBadge status={listing.listing_status as ListingStatus} />
           {listing.address && (
             <span className="flex min-w-0 items-start gap-0.5 text-xs text-ink-500">
               <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0" />
