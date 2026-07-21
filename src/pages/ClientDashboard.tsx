@@ -260,13 +260,15 @@ export default function ClientDashboard({ clientId }: Props) {
       <header className="sticky top-0 z-20 border-b border-ink-100 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-3">
-            <button
-              onClick={goBack}
-              className="btn-ghost p-1.5"
-              title="Back to clients"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
+            {isAgentView && (
+              <button
+                onClick={goBack}
+                className="btn-ghost p-1.5"
+                title="Back to clients"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            )}
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600">
                 <Building2 className="h-4.5 w-4.5 text-white" />
