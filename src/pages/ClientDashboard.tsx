@@ -495,7 +495,7 @@ export default function ClientDashboard({ clientId }: Props) {
                           No listings in this search yet.
                         </p>
                       ) : (
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="space-y-2">
                           {listings.map((l) => (
                             <ListingCard
                               key={l.id}
@@ -589,9 +589,9 @@ function ListingCard({
   onDelete: () => void;
 }) {
   return (
-    <div className="group overflow-hidden rounded-xl border border-ink-100 bg-white shadow-soft transition hover:shadow-lift">
-      {/* Photo */}
-      <div className="relative h-40 overflow-hidden bg-ink-100">
+    <div className="group flex items-center gap-3 overflow-hidden rounded-xl border border-ink-100 bg-white p-3 shadow-soft transition hover:shadow-lift">
+      {/* Thumbnail */}
+      <div className="relative h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-ink-100">
         {listing.photo_url ? (
           <img
             src={listing.photo_url}
@@ -600,73 +600,47 @@ function ListingCard({
           />
         ) : (
           <div className="flex h-full items-center justify-center text-ink-300">
-            <Home className="h-10 w-10" />
+            <Home className="h-6 w-6" />
           </div>
         )}
-        <div className="absolute left-2 top-2">
+        <div className="absolute left-1 top-1">
           <StatusBadge status={listing.listing_status as ListingStatus} />
-        </div>
-        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
-          <button
-            onClick={onEdit}
-            className="rounded-md bg-white/90 p-1.5 text-ink-600 shadow-sm hover:bg-white"
-            title="Edit"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={onDelete}
-            className="rounded-md bg-white/90 p-1.5 text-red-500 shadow-sm hover:bg-white"
-            title="Delete"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
         </div>
       </div>
 
       {/* Body */}
-      <div className="p-4">
-        {listing.price != null && (
-          <p className="font-display text-lg font-semibold text-ink-900">
-            ${listing.price.toLocaleString()}
-          </p>
-        )}
-        {listing.address && (
-          <p className="mt-0.5 flex items-start gap-1 text-xs text-ink-500">
-            <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0" />
-            {listing.address}
-          </p>
-        )}
-
-        {listing.source_url && (
-          <a
-            href={listing.source_url}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-brand-50 px-2.5 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            View listing
-          </a>
-        )}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          {listing.price != null && (
+            <span className="font-display text-base font-semibold text-ink-900">
+              ${listing.price.toLocaleString()}
+            </span>
+          )}
+          {listing.address && (
+            <span className="flex min-w-0 items-start gap-0.5 text-xs text-ink-500">
+              <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0" />
+              <span className="truncate">{listing.address}</span>
+            </span>
+          )}
+        </div>
 
         {/* Specs */}
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-600">
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-600">
           {listing.beds != null && (
-            <span className="flex items-center gap-1">
-              <BedDouble className="h-3.5 w-3.5 text-ink-400" />
+            <span className="flex items-center gap-0.5">
+              <BedDouble className="h-3 w-3 text-ink-400" />
               {listing.beds} bd
             </span>
           )}
           {listing.baths != null && (
-            <span className="flex items-center gap-1">
-              <Bath className="h-3.5 w-3.5 text-ink-400" />
+            <span className="flex items-center gap-0.5">
+              <Bath className="h-3 w-3 text-ink-400" />
               {listing.baths} ba
             </span>
           )}
           {listing.sqft != null && (
-            <span className="flex items-center gap-1">
-              <Maximize className="h-3.5 w-3.5 text-ink-400" />
+            <span className="flex items-center gap-0.5">
+              <Maximize className="h-3 w-3 text-ink-400" />
               {listing.sqft.toLocaleString()} sqft
             </span>
           )}
@@ -675,19 +649,47 @@ function ListingCard({
           )}
         </div>
 
-        {/* Customer status + last updated */}
-        <div className="mt-3 flex items-center justify-between border-t border-ink-50 pt-3">
+        <div className="mt-1.5 flex items-center gap-2">
           <CustomerBadge status={listing.customer_status as CustomerStatus} />
+          {listing.source_url && (
+            <a
+              href={listing.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 transition hover:text-brand-800"
+            >
+              <ExternalLink className="h-3 w-3" />
+              View listing
+            </a>
+          )}
           {listing.last_updated && (
-            <span className="text-xs text-ink-400">
-              Updated {new Date(listing.last_updated).toLocaleDateString()}
+            <span className="ml-auto text-xs text-ink-400">
+              {new Date(listing.last_updated).toLocaleDateString()}
             </span>
           )}
         </div>
 
         {listing.notes && (
-          <p className="mt-2 line-clamp-2 text-xs text-ink-500">{listing.notes}</p>
+          <p className="mt-1 line-clamp-1 text-xs text-ink-500">{listing.notes}</p>
         )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-shrink-0 flex-col gap-1 opacity-0 transition group-hover:opacity-100">
+        <button
+          onClick={onEdit}
+          className="rounded-md bg-ink-50 p-1.5 text-ink-600 transition hover:bg-ink-100"
+          title="Edit"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="rounded-md bg-ink-50 p-1.5 text-red-500 transition hover:bg-red-50"
+          title="Delete"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );
