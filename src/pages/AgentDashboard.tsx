@@ -13,6 +13,7 @@ import {
   Search,
   X,
   UserRound,
+  Globe,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
@@ -186,6 +187,19 @@ export default function AgentDashboard() {
                 <p className="mt-0.5 text-sm text-ink-500">
                   {formatAgentPhone(agent?.agent_phone_number)}
                 </p>
+                {agent?.personal_website && (
+                  <a
+                    href={agent.personal_website.startsWith("http") ? agent.personal_website : `https://${agent.personal_website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1.5 text-brand-700 transition hover:text-brand-800"
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    <span className="text-sm font-medium">
+                      {agent.personal_website.replace(/^https?:\/\//, "")}
+                    </span>
+                  </a>
+                )}
               </div>
             </button>
             <div className="flex flex-wrap items-center gap-2">
