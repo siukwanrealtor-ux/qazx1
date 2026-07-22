@@ -70,9 +70,13 @@ export default function SetupPassword() {
     }
     setSubmitting(false);
     setDone(true);
-    // Redirect after a short delay.
+    // Redirect after a short delay. Clean the URL so the Router's
+    // isSetupFlow check no longer matches, then let the Router send
+    // the user to the correct dashboard based on their role.
     setTimeout(() => {
-      window.location.hash = "#/agent/dashboard";
+      const cleanUrl = window.location.origin + window.location.pathname + "#/";
+      window.history.replaceState(null, "", cleanUrl);
+      window.dispatchEvent(new Event("hashchange"));
     }, 2000);
   };
 
