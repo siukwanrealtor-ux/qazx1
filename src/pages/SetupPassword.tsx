@@ -1,5 +1,15 @@
 import { useState, FormEvent, useEffect } from "react";
-import { Building2, Lock, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import {
+  Building2,
+  Lock,
+  Loader2,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  ArrowLeft,
+  Mail,
+} from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 export default function SetupPassword() {
@@ -10,44 +20,52 @@ export default function SetupPassword() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [verifying, setVerifying] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
+  const [linkExpired, setLinkExpired] = useState(false);
 
-  // Supabase redirects back with auth tokens in the URL hash
-  // (#access_token=...&type=recovery or type=invite). The supabase client
-  // is configured with detectSessionInUrl: true, so it should pick these up.
-  // We also explicitly call getSession to check.
   useEffect(() => {
+    let sub:
+      | { subscription: { unsubscribe: () => void } }
+      | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+
     const init = async () => {
-      // detectSessionInUrl should have already processed the hash on client init.
-      // Give it a moment, then check for a session.
       await new Promise((r) => setTimeout(r, 300));
       const { data } = await supabase.auth.getSession();
       if (data.session) {
         setVerifying(false);
+        setHasSession(true);
         return;
       }
 
-      // If no session yet, try listening for the auth event that fires when
-      // the URL is processed.
-      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-        if ((event === "SIGNED_IN" || event === "PASSWORD_RECOVERY" || event === "USER_UPDATED") && session) {
-          setVerifying(false);
-        }
-      });
+      const { data: subData } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          if (
+            (event === "SIGNED_IN" ||
+              event === "PASSWORD_RECOVERY" ||
+              event === "USER_UPDATED") &&
+            session
+          ) {
+            setVerifying(false);
+            setHasSession(true);
+            if (timeout) clearTimeout(timeout);
+          }
+        },
+      );
+      sub = subData;
 
-      // Timeout after 5s if nothing happens.
-      const timeout = setTimeout(() => {
+      timeout = setTimeout(() => {
         setVerifying(false);
-        setError(
-          "This password-setup link is invalid or has expired. Please request a new one."
-        );
+        setLinkExpired(true);
       }, 5000);
-
-      return () => {
-        sub.subscription.unsubscribe();
-        clearTimeout(timeout);
-      };
     };
+
     init();
+
+    return () => {
+      sub?.subscription.unsubscribe();
+      if (timeout) clearTimeout(timeout);
+    };
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -61,6 +79,14 @@ export default function SetupPassword() {
       setError("Passwords do not match.");
       return;
     }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      setLinkExpired(true);
+      setHasSession(false);
+      return;
+    }
+
     setSubmitting(true);
     const { error: updateError } = await supabase.auth.updateUser({ password });
     if (updateError) {
@@ -70,14 +96,17 @@ export default function SetupPassword() {
     }
     setSubmitting(false);
     setDone(true);
-    // Redirect after a short delay. Clean the URL so the Router's
-    // isSetupFlow check no longer matches, then let the Router send
-    // the user to the correct dashboard based on their role.
     setTimeout(() => {
       const cleanUrl = window.location.origin + window.location.pathname + "#/";
       window.history.replaceState(null, "", cleanUrl);
       window.dispatchEvent(new Event("hashchange"));
     }, 2000);
+  };
+
+  const goHome = () => {
+    const cleanUrl = window.location.origin + window.location.pathname + "#/";
+    window.history.replaceState(null, "", cleanUrl);
+    window.dispatchEvent(new Event("hashchange"));
   };
 
   if (verifying) {
@@ -111,6 +140,27 @@ export default function SetupPassword() {
               <p className="mt-2 text-sm text-ink-500">
                 Taking you to your dashboard…
               </p>
+            </div>
+          ) : linkExpired || !hasSession ? (
+            <div className="text-center">
+              <AlertCircle className="mx-auto h-12 w-12 text-amber-500" />
+              <h2 className="mt-4 font-display text-2xl font-semibold text-ink-900">
+                Link expired or invalid
+              </h2>
+              <p className="mt-2 text-sm text-ink-500">
+                This password-setup link has already been used or has expired.
+                Go to sign in to request a new password link using the
+                "Forgot password?" option.
+              </p>
+
+              <div className="mt-6 space-y-3">
+                <button
+                  onClick={goHome}
+                  className="btn-primary w-full"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Go to sign in
+                </button>
+              </div>
             </div>
           ) : (
             <>
