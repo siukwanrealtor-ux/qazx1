@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   X,
+  Check,
   ArrowLeft,
   Globe,
   Mail,
@@ -81,6 +82,8 @@ export default function ClientDashboard({ clientId }: Props) {
   const [loading, setLoading] = useState(true);
   const [showAddSearch, setShowAddSearch] = useState(false);
   const [newSearchName, setNewSearchName] = useState("");
+  const [renamingSearchId, setRenamingSearchId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [listingModalSearchId, setListingModalSearchId] = useState<string | null>(
     null
@@ -176,6 +179,27 @@ export default function ClientDashboard({ clientId }: Props) {
     }
     setNewSearchName("");
     setShowAddSearch(false);
+  };
+
+  const renameSearch = async (id: string) => {
+    const name = renameValue.trim();
+    if (!name) return;
+    await supabase.from("searches").update({ name }).eq("id", id);
+    setSearches((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, name } : s))
+    );
+    setRenamingSearchId(null);
+    setRenameValue("");
+  };
+
+  const startRenaming = (s: Search) => {
+    setRenamingSearchId(s.id);
+    setRenameValue(s.name);
+  };
+
+  const cancelRenaming = () => {
+    setRenamingSearchId(null);
+    setRenameValue("");
   };
 
   const deleteSearch = async (id: string) => {
@@ -454,38 +478,91 @@ export default function ClientDashboard({ clientId }: Props) {
                 <div key={s.id} className="card overflow-hidden">
                   {/* Search header */}
                   <div className="flex items-center justify-between border-b border-ink-50 bg-ink-50/40 px-5 py-3">
-                    <button
-                      onClick={() => toggleExpand(s.id)}
-                      className="flex items-center gap-2 text-left"
-                    >
-                      {isOpen ? (
-                        <ChevronDown className="h-4 w-4 text-ink-500" />
+                    <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                      {renamingSearchId === s.id ? (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            renameSearch(s.id);
+                          }}
+                          className="flex min-w-0 flex-1 items-center gap-1.5"
+                        >
+                          <input
+                            className="input h-8 py-1 text-sm"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") cancelRenaming();
+                            }}
+                            onBlur={() => {
+                              if (renameValue.trim() && renameValue.trim() !== s.name) {
+                                renameSearch(s.id);
+                              } else {
+                                cancelRenaming();
+                              }
+                            }}
+                          />
+                          <button
+                            type="submit"
+                            className="rounded-md bg-brand-600 p-1.5 text-white transition hover:bg-brand-700"
+                            title="Save"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelRenaming}
+                            className="rounded-md bg-ink-100 p-1.5 text-ink-500 transition hover:bg-ink-200"
+                            title="Cancel"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </form>
                       ) : (
-                        <ChevronRight className="h-4 w-4 text-ink-500" />
+                        <button
+                          onClick={() => toggleExpand(s.id)}
+                          className="flex min-w-0 items-center gap-2 text-left"
+                        >
+                          {isOpen ? (
+                            <ChevronDown className="h-4 w-4 text-ink-500" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-ink-500" />
+                          )}
+                          <span className="truncate font-medium text-ink-900">{s.name}</span>
+                          <span className="badge bg-ink-100 text-ink-600">
+                            {listings.length} {listings.length === 1 ? "listing" : "listings"}
+                          </span>
+                        </button>
                       )}
-                      <span className="font-medium text-ink-900">{s.name}</span>
-                      <span className="badge bg-ink-100 text-ink-600">
-                        {listings.length} {listings.length === 1 ? "listing" : "listings"}
-                      </span>
-                    </button>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => {
-                          setEditingListing(null);
-                          setListingModalSearchId(s.id);
-                        }}
-                        className="btn-secondary py-1.5 text-xs"
-                      >
-                        <Plus className="h-3.5 w-3.5" /> Add listing
-                      </button>
-                      <button
-                        onClick={() => deleteSearch(s.id)}
-                        className="btn-ghost p-1.5 text-ink-400 hover:text-red-600"
-                        title="Delete search"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
                     </div>
+                    {renamingSearchId !== s.id && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            setEditingListing(null);
+                            setListingModalSearchId(s.id);
+                          }}
+                          className="btn-secondary py-1.5 text-xs"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Add listing
+                        </button>
+                        <button
+                          onClick={() => startRenaming(s)}
+                          className="btn-ghost p-1.5 text-ink-400 hover:text-ink-700"
+                          title="Rename search"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => deleteSearch(s.id)}
+                          className="btn-ghost p-1.5 text-ink-400 hover:text-red-600"
+                          title="Delete search"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Listings */}
