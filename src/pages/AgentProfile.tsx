@@ -10,13 +10,16 @@ import {
   Save,
   Trash2,
   X,
+  Building2,
 } from "lucide-react";
 import AgentAvatar from "../components/AgentAvatar";
 import { useAuth } from "../lib/auth";
 import { createCroppedImageBlob } from "../lib/imageCrop";
 import { supabase } from "../lib/supabase";
+import { useToast } from "../components/Toast";
 
 const PROFILE_PHOTO_BUCKET = "agent-profile-photos";
+const LOGO_BUCKET = "agent-company-logos";
 
 interface ProfileFormState {
   name: string;
@@ -28,6 +31,7 @@ interface ProfileFormState {
   personal_website: string;
   about_me: string;
   agent_photo_url: string;
+  company_logo_url: string;
 }
 
 function buildForm(agent: ReturnType<typeof useAuth>["agent"]): ProfileFormState {
@@ -41,6 +45,7 @@ function buildForm(agent: ReturnType<typeof useAuth>["agent"]): ProfileFormState
     personal_website: agent?.personal_website || "",
     about_me: agent?.about_me || "",
     agent_photo_url: agent?.agent_photo_url || "",
+    company_logo_url: agent?.company_logo_url || "",
   };
 }
 
@@ -67,9 +72,11 @@ function normalizeWebsite(url: string) {
 
 export default function AgentProfile() {
   const { agent, user, signOut, refreshAgent } = useAuth();
+  const { toast } = useToast();
   const [form, setForm] = useState<ProfileFormState>(() => buildForm(agent));
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingLogo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [cropSource, setCropSource] = useState<string | null>(null);
@@ -79,7 +86,11 @@ export default function AgentProfile() {
   const [pendingPhotoBlob, setPendingPhotoBlob] = useState<Blob | null>(null);
   const [pendingPhotoPreviewUrl, setPendingPhotoPreviewUrl] = useState<string | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
+  const [pendingLogoBlob, setPendingLogoBlob] = useState<Blob | null>(null);
+  const [pendingLogoPreviewUrl, setPendingLogoPreviewUrl] = useState<string | null>(null);
+  const [removeLogo, setRemoveLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setForm(buildForm(agent));
@@ -94,12 +105,19 @@ export default function AgentProfile() {
       if (cropSource) {
         URL.revokeObjectURL(cropSource);
       }
+      if (pendingLogoPreviewUrl) {
+        URL.revokeObjectURL(pendingLogoPreviewUrl);
+      }
     };
-  }, [pendingPhotoPreviewUrl, cropSource]);
+  }, [pendingPhotoPreviewUrl, cropSource, pendingLogoPreviewUrl]);
 
   const photoPreviewUrl = removePhoto
     ? null
     : pendingPhotoPreviewUrl || form.agent_photo_url || null;
+
+  const logoPreviewUrl = removeLogo
+    ? null
+    : pendingLogoPreviewUrl || form.company_logo_url || null;
 
   const update = (key: keyof ProfileFormState, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -121,9 +139,46 @@ export default function AgentProfile() {
     setForm(buildForm(agent));
     setRemovePhoto(false);
     resetPendingPhoto();
+    setRemoveLogo(false);
+    resetPendingLogo();
     setSuccess(null);
     setError(null);
     goBack();
+  };
+
+  const resetPendingLogo = () => {
+    if (pendingLogoPreviewUrl) {
+      URL.revokeObjectURL(pendingLogoPreviewUrl);
+    }
+    setPendingLogoBlob(null);
+    setPendingLogoPreviewUrl(null);
+  };
+
+  const handleLogoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file for the logo.");
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setError("Company logos must be 3MB or smaller.");
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    const previewUrl = URL.createObjectURL(file);
+    setPendingLogoBlob(file);
+    setPendingLogoPreviewUrl(previewUrl);
+    setRemoveLogo(false);
+  };
+
+  const handleRemoveLogo = () => {
+    resetPendingLogo();
+    setRemoveLogo(true);
+    setSuccess(null);
+    setError(null);
   };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -193,14 +248,16 @@ export default function AgentProfile() {
     setSuccess(null);
 
     let nextPhotoUrl = form.agent_photo_url || null;
-    let uploadedPath: string | null = null;
+    let nextLogoUrl = form.company_logo_url || null;
+    let uploadedPhotoPath: string | null = null;
+    let uploadedLogoPath: string | null = null;
 
     try {
       if (pendingPhotoBlob) {
-        uploadedPath = `${user.id}/profile-${Date.now()}.jpg`;
+        uploadedPhotoPath = `${user.id}/profile-${Date.now()}.jpg`;
         const { error: uploadError } = await supabase.storage
           .from(PROFILE_PHOTO_BUCKET)
-          .upload(uploadedPath, pendingPhotoBlob, {
+          .upload(uploadedPhotoPath, pendingPhotoBlob, {
             contentType: "image/jpeg",
             upsert: false,
           });
@@ -211,9 +268,30 @@ export default function AgentProfile() {
 
         nextPhotoUrl = supabase.storage
           .from(PROFILE_PHOTO_BUCKET)
-          .getPublicUrl(uploadedPath).data.publicUrl;
+          .getPublicUrl(uploadedPhotoPath).data.publicUrl;
       } else if (removePhoto) {
         nextPhotoUrl = null;
+      }
+
+      if (pendingLogoBlob) {
+        const logoExt = pendingLogoBlob.type.split("/")[1] || "png";
+        uploadedLogoPath = `${user.id}/logo-${Date.now()}.${logoExt}`;
+        const { error: logoUploadError } = await supabase.storage
+          .from(LOGO_BUCKET)
+          .upload(uploadedLogoPath, pendingLogoBlob, {
+            contentType: pendingLogoBlob.type,
+            upsert: false,
+          });
+
+        if (logoUploadError) {
+          throw logoUploadError;
+        }
+
+        nextLogoUrl = supabase.storage
+          .from(LOGO_BUCKET)
+          .getPublicUrl(uploadedLogoPath).data.publicUrl;
+      } else if (removeLogo) {
+        nextLogoUrl = null;
       }
 
       const payload = {
@@ -226,6 +304,7 @@ export default function AgentProfile() {
         about_me: form.about_me.trim() || null,
         personal_website: normalizeWebsite(form.personal_website) || null,
         agent_photo_url: nextPhotoUrl,
+        company_logo_url: nextLogoUrl,
         updated_at: new Date().toISOString(),
       };
 
@@ -238,10 +317,13 @@ export default function AgentProfile() {
         throw saveError;
       }
 
-      const previousPath = parseStoragePath(agent.agent_photo_url, PROFILE_PHOTO_BUCKET);
-      const shouldDeletePreviousPhoto = previousPath && (removePhoto || !!pendingPhotoBlob);
-      if (shouldDeletePreviousPhoto) {
-        await supabase.storage.from(PROFILE_PHOTO_BUCKET).remove([previousPath]);
+      const previousPhotoPath = parseStoragePath(agent.agent_photo_url, PROFILE_PHOTO_BUCKET);
+      if (previousPhotoPath && (removePhoto || !!pendingPhotoBlob)) {
+        await supabase.storage.from(PROFILE_PHOTO_BUCKET).remove([previousPhotoPath]);
+      }
+      const previousLogoPath = parseStoragePath(agent.company_logo_url, LOGO_BUCKET);
+      if (previousLogoPath && (removeLogo || !!pendingLogoBlob)) {
+        await supabase.storage.from(LOGO_BUCKET).remove([previousLogoPath]);
       }
 
       await refreshAgent();
@@ -249,13 +331,20 @@ export default function AgentProfile() {
         ...current,
         personal_website: normalizeWebsite(current.personal_website),
         agent_photo_url: nextPhotoUrl || "",
+        company_logo_url: nextLogoUrl || "",
       }));
       setSuccess("Profile updated successfully.");
+      toast("Profile updated successfully", "success");
       setRemovePhoto(false);
       resetPendingPhoto();
+      setRemoveLogo(false);
+      resetPendingLogo();
     } catch (saveError) {
-      if (uploadedPath) {
-        await supabase.storage.from(PROFILE_PHOTO_BUCKET).remove([uploadedPath]);
+      if (uploadedPhotoPath) {
+        await supabase.storage.from(PROFILE_PHOTO_BUCKET).remove([uploadedPhotoPath]);
+      }
+      if (uploadedLogoPath) {
+        await supabase.storage.from(LOGO_BUCKET).remove([uploadedLogoPath]);
       }
       setError((saveError as Error).message || "Unable to save your profile.");
     } finally {
@@ -348,6 +437,49 @@ export default function AgentProfile() {
               className="hidden"
               onChange={handleFileChange}
             />
+
+            <div className="mt-6 border-t border-ink-100 pt-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-400">
+                Company / Brokerage Logo
+              </p>
+              <div className="mt-3 flex items-center gap-4">
+                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-ink-200 bg-ink-50">
+                  {logoPreviewUrl ? (
+                    <img src={logoPreviewUrl} alt="Company logo" className="h-full w-full object-contain" />
+                  ) : (
+                    <Building2 className="h-6 w-6 text-ink-300" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    className="btn-secondary w-full text-sm"
+                    disabled={saving || uploadingLogo}
+                  >
+                    <Camera className="h-4 w-4" />
+                    {logoPreviewUrl ? "Replace Logo" : "Upload Logo"}
+                  </button>
+                  {logoPreviewUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      className="btn-ghost w-full text-sm"
+                      disabled={saving}
+                    >
+                      <Trash2 className="h-4 w-4" /> Remove Logo
+                    </button>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoFileChange}
+              />
+            </div>
 
             <div className="mt-6 rounded-2xl bg-ink-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-400">

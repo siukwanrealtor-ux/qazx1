@@ -8,7 +8,6 @@ import {
   EyeOff,
   AlertCircle,
   ArrowLeft,
-  Mail,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 

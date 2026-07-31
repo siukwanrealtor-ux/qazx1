@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Building2,
   Plus,
@@ -21,6 +21,8 @@ import {
   Mail,
   Phone,
   ExternalLink,
+  Copy,
+  Calendar,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
@@ -28,6 +30,8 @@ import type { Agent, Client, Search, Listing, CustomerStatus } from "../lib/type
 import { CUSTOMER_STATUSES } from "../lib/types";
 import ListingModal from "../components/ListingModal";
 import AgentAvatar from "../components/AgentAvatar";
+import ConfirmDialog from "../components/ConfirmDialog";
+import { useToast } from "../components/Toast";
 
 const CLIENT_BASE_SELECT = "id,agent_id,user_id,name,phone,email,created_at";
 const CLIENT_PROFILE_SELECT =
@@ -72,6 +76,7 @@ interface Props {
 
 export default function ClientDashboard({ clientId }: Props) {
   const { signOut, user } = useAuth();
+  const { toast } = useToast();
   const [agent, setAgent] = useState<Agent | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [searches, setSearches] = useState<Search[]>([]);
@@ -89,8 +94,14 @@ export default function ClientDashboard({ clientId }: Props) {
     null
   );
   const [accessDenied, setAccessDenied] = useState(false);
+  const [deleteSearchTarget, setDeleteSearchTarget] = useState<Search | null>(null);
+  const [deleteListingTarget, setDeleteListingTarget] = useState<{ searchId: string; listing: Listing } | null>(null);
+  const [duplicateTarget, setDuplicateTarget] = useState<Listing | null>(null);
+  const [duplicateSearchId, setDuplicateSearchId] = useState<string>("");
+  const [deletingSearch, setDeletingSearch] = useState(false);
+  const [deletingListing, setDeletingListing] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
-  // Load client + searches
   const loadAll = async () => {
     setLoading(true);
     let { data: clientData, error: clientErr } = await supabase
@@ -105,7 +116,7 @@ export default function ClientDashboard({ clientId }: Props) {
         .select(CLIENT_BASE_SELECT)
         .eq("id", clientId)
         .maybeSingle();
-      clientData = fallback.data;
+      clientData = fallback.data as typeof clientData;
       clientErr = fallback.error;
     }
 
@@ -133,7 +144,6 @@ export default function ClientDashboard({ clientId }: Props) {
     setExpanded(new Set(sList.map((s) => s.id)));
     setLoading(false);
 
-    // Load listings for each search
     const map: Record<string, Listing[]> = {};
     await Promise.all(
       sList.map(async (s) => {
@@ -152,17 +162,69 @@ export default function ClientDashboard({ clientId }: Props) {
     loadAll();
   }, [clientId]);
 
-  const reloadListings = async (searchId: string) => {
-    const { data } = await supabase
-      .from("listings")
+  const reloadListings = useCallback(
+    async (searchId: string) => {
+      const { data } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("search_id", searchId)
+        .order("updated_at", { ascending: false });
+      setListingsBySearch((prev) => ({
+        ...prev,
+        [searchId]: (data as Listing[]) || [],
+      }));
+    },
+    [],
+  );
+
+  const reloadSearches = useCallback(async () => {
+    const { data: searchData } = await supabase
+      .from("searches")
       .select("*")
-      .eq("search_id", searchId)
-      .order("updated_at", { ascending: false });
-    setListingsBySearch((prev) => ({
-      ...prev,
-      [searchId]: (data as Listing[]) || [],
-    }));
-  };
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false });
+    const sList = (searchData as Search[]) || [];
+    setSearches(sList);
+    await Promise.all(
+      sList.map(async (s) => {
+        await reloadListings(s.id);
+      })
+    );
+  }, [clientId, reloadListings]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`client-dash-${clientId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "listings",
+          filter: `search_id=in.(${searches.map((s) => s.id).join(",")})`,
+        },
+        () => {
+          searches.forEach((s) => reloadListings(s.id));
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "searches",
+          filter: `client_id=eq.${clientId}`,
+        },
+        () => {
+          reloadSearches();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clientId, searches, reloadListings, reloadSearches]);
 
   const addSearch = async () => {
     if (!newSearchName.trim()) return;
@@ -176,6 +238,7 @@ export default function ClientDashboard({ clientId }: Props) {
       setSearches((prev) => [newSearch, ...prev]);
       setExpanded((prev) => new Set(prev).add(newSearch.id));
       setListingsBySearch((prev) => ({ ...prev, [newSearch.id]: [] }));
+      toast("Search created", "success");
     }
     setNewSearchName("");
     setShowAddSearch(false);
@@ -202,21 +265,76 @@ export default function ClientDashboard({ clientId }: Props) {
     setRenameValue("");
   };
 
-  const deleteSearch = async (id: string) => {
-    if (!confirm("Delete this search and all its listings?")) return;
-    await supabase.from("searches").delete().eq("id", id);
-    setSearches((prev) => prev.filter((s) => s.id !== id));
-    setListingsBySearch((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+  const handleDeleteSearch = async () => {
+    if (!deleteSearchTarget) return;
+    setDeletingSearch(true);
+    try {
+      const { error } = await supabase
+        .from("searches")
+        .delete()
+        .eq("id", deleteSearchTarget.id);
+      if (error) throw error;
+      setSearches((prev) => prev.filter((s) => s.id !== deleteSearchTarget.id));
+      setListingsBySearch((prev) => {
+        const next = { ...prev };
+        delete next[deleteSearchTarget.id];
+        return next;
+      });
+      toast(`"${deleteSearchTarget.name}" deleted`, "success");
+      setDeleteSearchTarget(null);
+    } catch {
+      toast("Unable to delete search. Please try again.", "error");
+    } finally {
+      setDeletingSearch(false);
+    }
   };
 
-  const deleteListing = async (searchId: string, id: string) => {
-    if (!confirm("Delete this listing?")) return;
-    await supabase.from("listings").delete().eq("id", id);
-    reloadListings(searchId);
+  const handleDeleteListing = async () => {
+    if (!deleteListingTarget) return;
+    setDeletingListing(true);
+    try {
+      const { error } = await supabase
+        .from("listings")
+        .delete()
+        .eq("id", deleteListingTarget.listing.id);
+      if (error) throw error;
+      await reloadListings(deleteListingTarget.searchId);
+      toast("Listing deleted", "success");
+      setDeleteListingTarget(null);
+    } catch {
+      toast("Unable to delete listing. Please try again.", "error");
+    } finally {
+      setDeletingListing(false);
+    }
+  };
+
+  const handleDuplicateListing = async () => {
+    if (!duplicateTarget || !duplicateSearchId) return;
+    setDuplicating(true);
+    try {
+      const { error } = await supabase.from("listings").insert({
+        search_id: duplicateSearchId,
+        photo_url: duplicateTarget.photo_url || null,
+        address: duplicateTarget.address || null,
+        price: duplicateTarget.price || null,
+        beds: duplicateTarget.beds || null,
+        baths: duplicateTarget.baths || null,
+        sqft: duplicateTarget.sqft || null,
+        lot_size: duplicateTarget.lot_size || null,
+        customer_status: duplicateTarget.customer_status,
+        notes: duplicateTarget.notes || null,
+        source_url: duplicateTarget.source_url || null,
+      });
+      if (error) throw error;
+      await reloadListings(duplicateSearchId);
+      toast("Listing duplicated", "success");
+      setDuplicateTarget(null);
+      setDuplicateSearchId("");
+    } catch {
+      toast("Unable to duplicate listing. Please try again.", "error");
+    } finally {
+      setDuplicating(false);
+    }
   };
 
   const toggleExpand = (id: string) => {
@@ -291,6 +409,7 @@ export default function ClientDashboard({ clientId }: Props) {
                 onClick={goBack}
                 className="btn-ghost p-1.5"
                 title="Back to clients"
+                aria-label="Back to clients"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
@@ -308,7 +427,7 @@ export default function ClientDashboard({ clientId }: Props) {
             <span className="hidden text-xs font-medium text-ink-500 sm:block">
               {isAgentView ? "Agent view" : "Client view"}
             </span>
-            <button onClick={signOut} className="btn-ghost" title="Sign out">
+            <button onClick={signOut} className="btn-ghost" title="Sign out" aria-label="Sign out">
               <LogOut className="h-4 w-4" />
             </button>
           </div>
@@ -506,7 +625,7 @@ export default function ClientDashboard({ clientId }: Props) {
                           <button
                             type="submit"
                             className="rounded-md bg-brand-600 p-1.5 text-white transition hover:bg-brand-700"
-                            title="Save"
+                            aria-label="Save search name"
                           >
                             <Check className="h-3.5 w-3.5" />
                           </button>
@@ -514,7 +633,7 @@ export default function ClientDashboard({ clientId }: Props) {
                             type="button"
                             onClick={cancelRenaming}
                             className="rounded-md bg-ink-100 p-1.5 text-ink-500 transition hover:bg-ink-200"
-                            title="Cancel"
+                            aria-label="Cancel rename"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -523,6 +642,8 @@ export default function ClientDashboard({ clientId }: Props) {
                         <button
                           onClick={() => toggleExpand(s.id)}
                           className="flex min-w-0 items-center gap-2 text-left"
+                          aria-label={`${isOpen ? "Collapse" : "Expand"} search "${s.name}"`}
+                          aria-expanded={isOpen}
                         >
                           {isOpen ? (
                             <ChevronDown className="h-4 w-4 text-ink-500" />
@@ -549,15 +670,17 @@ export default function ClientDashboard({ clientId }: Props) {
                         </button>
                         <button
                           onClick={() => startRenaming(s)}
-                          className="btn-ghost p-1.5 text-ink-400 hover:text-ink-700"
+                          className="btn-ghost p-2 text-ink-400 hover:text-ink-700"
                           title="Rename search"
+                          aria-label={`Rename search "${s.name}"`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
-                          onClick={() => deleteSearch(s.id)}
-                          className="btn-ghost p-1.5 text-ink-400 hover:text-red-600"
+                          onClick={() => setDeleteSearchTarget(s)}
+                          className="btn-ghost p-2 text-ink-400 hover:text-red-600"
                           title="Delete search"
+                          aria-label={`Delete search "${s.name}"`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -597,11 +720,17 @@ export default function ClientDashboard({ clientId }: Props) {
                                     <ListingCard
                                       key={l.id}
                                       listing={l}
+                                      searches={searches}
+                                      currentSearchId={s.id}
                                       onEdit={() => {
                                         setEditingListing(l);
                                         setListingModalSearchId(s.id);
                                       }}
-                                      onDelete={() => deleteListing(s.id, l.id)}
+                                      onDelete={() => setDeleteListingTarget({ searchId: s.id, listing: l })}
+                                      onDuplicate={(listing) => {
+                                        setDuplicateTarget(listing);
+                                        setDuplicateSearchId("");
+                                      }}
                                     />
                                   ))}
                                 </div>
@@ -634,6 +763,7 @@ export default function ClientDashboard({ clientId }: Props) {
               <button
                 onClick={() => setShowAddSearch(false)}
                 className="btn-ghost p-1.5"
+                aria-label="Close dialog"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -676,19 +806,111 @@ export default function ClientDashboard({ clientId }: Props) {
           }}
         />
       )}
+
+      {/* Delete search confirmation */}
+      <ConfirmDialog
+        open={!!deleteSearchTarget}
+        title="Delete search"
+        message={`Delete "${deleteSearchTarget?.name}" and all its listings? This cannot be undone.`}
+        confirmLabel="Delete search"
+        variant="danger"
+        onConfirm={handleDeleteSearch}
+        onCancel={() => !deletingSearch && setDeleteSearchTarget(null)}
+      />
+
+      {/* Delete listing confirmation */}
+      <ConfirmDialog
+        open={!!deleteListingTarget}
+        title="Delete listing"
+        message={`Delete this listing${deleteListingTarget?.listing.address ? ` at ${deleteListingTarget.listing.address}` : ""}? This cannot be undone.`}
+        confirmLabel="Delete listing"
+        variant="danger"
+        onConfirm={handleDeleteListing}
+        onCancel={() => !deletingListing && setDeleteListingTarget(null)}
+      />
+
+      {/* Duplicate listing modal */}
+      {duplicateTarget && (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center p-4 animate-fade-in">
+          <div
+            className="absolute inset-0 bg-ink-950/40 backdrop-blur-sm"
+            onClick={() => !duplicating && setDuplicateTarget(null)}
+          />
+          <div className="relative z-10 w-full max-w-sm card p-6 animate-fade-in-up">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-lg font-semibold text-ink-900">
+                Duplicate listing
+              </h3>
+              <button
+                onClick={() => setDuplicateTarget(null)}
+                className="btn-ghost p-1.5"
+                aria-label="Close dialog"
+                disabled={duplicating}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mt-1.5 text-sm text-ink-600">
+              Copy this listing to another search. The original stays in place.
+            </p>
+            {duplicateTarget.address && (
+              <p className="mt-2 text-sm font-medium text-ink-900">
+                {duplicateTarget.address}
+              </p>
+            )}
+            <div className="mt-4 space-y-3">
+              <label className="label">Copy to search</label>
+              <select
+                className="input"
+                value={duplicateSearchId}
+                onChange={(e) => setDuplicateSearchId(e.target.value)}
+              >
+                <option value="">Choose a search…</option>
+                {searches.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleDuplicateListing}
+                className="btn-primary w-full"
+                disabled={!duplicateSearchId || duplicating}
+              >
+                {duplicating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" /> Duplicate listing
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function ListingCard({
   listing,
+  searches,
+  currentSearchId,
   onEdit,
   onDelete,
+  onDuplicate,
 }: {
   listing: Listing;
+  searches: Search[];
+  currentSearchId: string;
   onEdit: () => void;
   onDelete: () => void;
+  onDuplicate: (listing: Listing) => void;
 }) {
+  const otherSearches = searches.filter((s) => s.id !== currentSearchId);
+
   return (
     <div className="group flex items-center gap-3 overflow-hidden rounded-xl border border-ink-100 bg-white p-3 shadow-soft transition hover:shadow-lift">
       {/* Thumbnail */}
@@ -761,7 +983,8 @@ function ListingCard({
             </a>
           )}
           {listing.updated_at && (
-            <span className="ml-auto text-xs text-ink-400">
+            <span className="ml-auto inline-flex items-center gap-1 text-xs text-ink-400">
+              <Calendar className="h-3 w-3" />
               {new Date(listing.updated_at).toLocaleDateString()}
             </span>
           )}
@@ -773,18 +996,30 @@ function ListingCard({
       </div>
 
       {/* Actions */}
-      <div className="flex flex-shrink-0 flex-col gap-1 opacity-0 transition group-hover:opacity-100">
+      <div className="flex flex-shrink-0 flex-col gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
         <button
           onClick={onEdit}
-          className="rounded-md bg-ink-50 p-1.5 text-ink-600 transition hover:bg-ink-100"
-          title="Edit"
+          className="rounded-md bg-ink-50 p-2 text-ink-600 transition hover:bg-ink-100"
+          title="Edit listing"
+          aria-label={`Edit listing${listing.address ? ` at ${listing.address}` : ""}`}
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>
+        {otherSearches.length > 0 && (
+          <button
+            onClick={() => onDuplicate(listing)}
+            className="rounded-md bg-ink-50 p-2 text-ink-600 transition hover:bg-ink-100"
+            title="Duplicate to another search"
+            aria-label={`Duplicate listing${listing.address ? ` at ${listing.address}` : ""}`}
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </button>
+        )}
         <button
           onClick={onDelete}
-          className="rounded-md bg-ink-50 p-1.5 text-red-500 transition hover:bg-red-50"
-          title="Delete"
+          className="rounded-md bg-ink-50 p-2 text-red-500 transition hover:bg-red-50"
+          title="Delete listing"
+          aria-label={`Delete listing${listing.address ? ` at ${listing.address}` : ""}`}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>

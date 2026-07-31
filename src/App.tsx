@@ -10,6 +10,7 @@ import ClientProfile from "./pages/ClientProfile";
 import LegalPage from "./pages/LegalPage";
 import WhatsAppSupport from "./components/WhatsAppSupport";
 import CookieBanner from "./components/CookieBanner";
+import { ToastProvider } from "./components/Toast";
 import { Loader2 } from "lucide-react";
 
 function Router() {
@@ -110,9 +111,11 @@ function Router() {
 function App() {
   return (
     <AuthProvider>
-      <Router />
-      <WhatsAppSupport />
-      <CookieBanner />
+      <ToastProvider>
+        <Router />
+        <WhatsAppSupport />
+        <CookieBanner />
+      </ToastProvider>
     </AuthProvider>
   );
 }

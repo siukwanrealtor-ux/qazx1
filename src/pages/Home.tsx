@@ -54,7 +54,7 @@ export default function Home() {
     resetState();
 
     try {
-      const { data, error: signInError } =
+      const { error: signInError } =
         await supabase.auth.signInWithPassword({
           email: email.trim().toLowerCase(),
           password,

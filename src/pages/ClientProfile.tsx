@@ -3,6 +3,7 @@ import { ArrowLeft, Building2, Loader2, LogOut, Save } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import type { Client } from "../lib/types";
+import { useToast } from "../components/Toast";
 
 const CLIENT_BASE_SELECT = "id,agent_id,user_id,name,phone,email,created_at";
 const CLIENT_PROFILE_SELECT =
@@ -58,6 +59,7 @@ const toNumberOrNull = (value: string) => {
 
 export default function ClientProfile({ clientId }: Props) {
   const { signOut, user } = useAuth();
+  const { toast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -100,7 +102,7 @@ export default function ClientProfile({ clientId }: Props) {
         .select(CLIENT_BASE_SELECT)
         .eq("id", clientId)
         .maybeSingle();
-      data = fallback.data;
+      data = fallback.data as typeof data;
       error = fallback.error;
     }
 
@@ -218,6 +220,7 @@ export default function ClientProfile({ clientId }: Props) {
     }
 
     setSaveMessage("Client profile saved.");
+    toast("Client profile saved", "success");
     setSaving(false);
     await loadClient();
   };

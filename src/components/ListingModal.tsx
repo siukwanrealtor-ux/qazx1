@@ -1,8 +1,12 @@
-import { useState, FormEvent } from "react";
-import { X, Loader2, ImageIcon, ExternalLink } from "lucide-react";
+import { useState, useRef, FormEvent } from "react";
+import { X, Loader2, ImageIcon, ExternalLink, Upload, Link2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../lib/auth";
 import type { Listing, CustomerStatus } from "../lib/types";
 import { CUSTOMER_STATUSES } from "../lib/types";
+import { useToast } from "./Toast";
+
+const LISTING_PHOTO_BUCKET = "listing-photos";
 
 interface Props {
   listing: Listing | null;
@@ -12,6 +16,8 @@ interface Props {
 }
 
 export default function ListingModal({ listing, searchId, onClose, onSaved }: Props) {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [form, setForm] = useState({
     photo_url: listing?.photo_url || "",
     address: listing?.address || "",
@@ -25,10 +31,52 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
     source_url: listing?.source_url || "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photoMode, setPhotoMode] = useState<"url" | "upload">("url");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const update = (k: keyof typeof form, v: string) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !user) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Listing photos must be 5MB or smaller.");
+      return;
+    }
+
+    setError(null);
+    setUploading(true);
+
+    try {
+      const ext = file.type.split("/")[1] || "jpg";
+      const path = `${user.id}/listing-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from(LISTING_PHOTO_BUCKET)
+        .upload(path, file, { contentType: file.type, upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const publicUrl = supabase.storage
+        .from(LISTING_PHOTO_BUCKET)
+        .getPublicUrl(path).data.publicUrl;
+
+      setForm((f) => ({ ...f, photo_url: publicUrl }));
+      toast("Photo uploaded", "success");
+    } catch (err) {
+      setError((err as Error).message || "Unable to upload photo.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -65,6 +113,7 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
       return;
     }
 
+    toast(listing ? "Listing updated" : "Listing added", "success");
     setSubmitting(false);
     onSaved();
   };
@@ -77,7 +126,7 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
           <h3 className="font-display text-xl font-semibold text-ink-900">
             {listing ? "Edit listing" : "Add listing"}
           </h3>
-          <button onClick={onClose} className="btn-ghost p-1.5">
+          <button onClick={onClose} className="btn-ghost p-1.5" aria-label="Close dialog">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -92,24 +141,75 @@ export default function ListingModal({ listing, searchId, onClose, onSaved }: Pr
                   <img src={form.photo_url} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-ink-300">
-                    <ImageIcon className="h-6 w-6" />
+                    {uploading ? (
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    ) : (
+                      <ImageIcon className="h-6 w-6" />
+                    )}
                   </div>
                 )}
               </div>
-              <input
-                className="input flex-1"
-                placeholder="Paste image URL…"
-                value={form.photo_url}
-                onChange={(e) => update("photo_url", e.target.value)}
-              />
+              <div className="flex-1 space-y-2">
+                <div className="flex rounded-lg border border-ink-200 bg-white p-0.5 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setPhotoMode("url")}
+                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition ${
+                      photoMode === "url"
+                        ? "bg-brand-600 text-white"
+                        : "text-ink-600 hover:bg-ink-100"
+                    }`}
+                  >
+                    <Link2 className="h-3.5 w-3.5" /> URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoMode("upload")}
+                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition ${
+                      photoMode === "upload"
+                        ? "bg-brand-600 text-white"
+                        : "text-ink-600 hover:bg-ink-100"
+                    }`}
+                  >
+                    <Upload className="h-3.5 w-3.5" /> Upload
+                  </button>
+                </div>
+                {photoMode === "url" ? (
+                  <input
+                    className="input"
+                    placeholder="Paste image URL…"
+                    value={form.photo_url}
+                    onChange={(e) => update("photo_url", e.target.value)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn-secondary w-full text-sm"
+                    disabled={uploading}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {uploading ? "Uploading…" : form.photo_url ? "Replace photo" : "Choose file"}
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
             </div>
-            <p className="mt-2 text-xs text-ink-500">
-              Tip: copy a listing's photo URL from sites like{" "}
-              <a href="https://www.zillow.com" target="_blank" rel="noreferrer" className="text-brand-600 hover:text-brand-700">Zillow.com</a>{" "}
-              or{" "}
-              <a href="https://www.realtor.com" target="_blank" rel="noreferrer" className="text-brand-600 hover:text-brand-700">Realtor.com</a>{" "}
-              and paste it above.
-            </p>
+            {photoMode === "url" && (
+              <p className="mt-2 text-xs text-ink-500">
+                Tip: copy a listing's photo URL from sites like{" "}
+                <a href="https://www.zillow.com" target="_blank" rel="noreferrer" className="text-brand-600 hover:text-brand-700">Zillow.com</a>{" "}
+                or{" "}
+                <a href="https://www.realtor.com" target="_blank" rel="noreferrer" className="text-brand-600 hover:text-brand-700">Realtor.com</a>{" "}
+                and paste it above.
+              </p>
+            )}
           </div>
 
           <div>

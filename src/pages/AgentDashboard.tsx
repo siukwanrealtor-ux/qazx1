@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, FormEvent, useMemo } from "react";
 import {
   Building2,
   Plus,
@@ -10,15 +10,21 @@ import {
   Check,
   Phone,
   Mail,
-  Search,
+  Search as SearchIcon,
   X,
   UserRound,
   Globe,
+  Trash2,
+  Send,
+  ArrowDownUp,
+  UserPlus,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import type { Client } from "../lib/types";
 import AgentAvatar from "../components/AgentAvatar";
+import ConfirmDialog from "../components/ConfirmDialog";
+import { useToast } from "../components/Toast";
 
 const CLIENT_BASE_SELECT = "id,agent_id,user_id,name,phone,email,created_at";
 const CLIENT_PROFILE_SELECT =
@@ -57,13 +63,22 @@ const normalizeClient = (row: Partial<Client>): Client => ({
   created_at: row.created_at || "",
 });
 
+type SortKey = "name" | "created_at" | "status";
+type FilterKey = "all" | "active" | "pending";
+
 export default function AgentDashboard() {
   const { agent, signOut, refreshAgent } = useAuth();
+  const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [filterKey, setFilterKey] = useState<FilterKey>("all");
+  const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [reinvitingId, setReinvitingId] = useState<string | null>(null);
 
   const loadClients = async () => {
     if (!agent) return;
@@ -79,7 +94,7 @@ export default function AgentDashboard() {
         .select(CLIENT_BASE_SELECT)
         .eq("agent_id", agent.id)
         .order("created_at", { ascending: false });
-      data = fallback.data;
+      data = fallback.data as typeof data;
       error = fallback.error;
     }
 
@@ -98,15 +113,33 @@ export default function AgentDashboard() {
   }, [agent]);
 
   useEffect(() => {
-    // Refresh agent profile on dashboard entry so profile updates appear immediately.
     refreshAgent();
   }, [refreshAgent]);
 
-  const filtered = clients.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredAndSorted = useMemo(() => {
+    let result = clients.filter(
+      (c) =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.email.toLowerCase().includes(search.toLowerCase())
+    );
+
+    if (filterKey === "active") result = result.filter((c) => c.user_id);
+    if (filterKey === "pending") result = result.filter((c) => !c.user_id);
+
+    result = result.slice().sort((a, b) => {
+      switch (sortKey) {
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "status":
+          return (a.user_id ? 1 : 0) - (b.user_id ? 1 : 0);
+        case "created_at":
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
+
+    return result;
+  }, [clients, search, sortKey, filterKey]);
 
   const openClientDashboard = (clientId: string) => {
     window.location.hash = `#/client/${clientId}`;
@@ -120,11 +153,61 @@ export default function AgentDashboard() {
     const link = `${window.location.origin}${window.location.pathname}#/client/${clientId}`;
     navigator.clipboard.writeText(link);
     setCopiedId(clientId);
+    toast("Dashboard link copied", "info");
     setTimeout(() => setCopiedId(null), 2000);
   };
 
   const openProfile = () => {
     window.location.hash = "#/agent/profile";
+  };
+
+  const handleDeleteClient = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .delete()
+        .eq("id", deleteTarget.id);
+
+      if (error) throw error;
+      setClients((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      toast(`${deleteTarget.name} removed from your roster`, "success");
+      setDeleteTarget(null);
+    } catch {
+      toast("Unable to remove client. Please try again.", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleReinvite = async (client: Client) => {
+    setReinvitingId(client.id);
+    try {
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`;
+      const res = await fetch(funcUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          email: client.email.trim().toLowerCase(),
+          role: "client",
+          agentId: client.agent_id,
+          clientName: client.name,
+          phone: client.phone || undefined,
+          redirectTo: window.location.origin + window.location.pathname,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to resend invite");
+      toast(`Setup link re-sent to ${client.email}`, "success");
+    } catch {
+      toast("Unable to resend invite. Please try again.", "error");
+    } finally {
+      setReinvitingId(null);
+    }
   };
 
   const formatCurrency = (value: number | null | undefined) => {
@@ -148,7 +231,6 @@ export default function AgentDashboard() {
   };
 
   if (!agent && !loading) {
-    // Not an agent — bounce home.
     window.location.hash = "#/";
     return null;
   }
@@ -172,13 +254,22 @@ export default function AgentDashboard() {
               onClick={openProfile}
               className="flex items-center gap-4 text-left"
             >
-              <AgentAvatar
-                name={agent?.name}
-                email={agent?.email}
-                photoUrl={agent?.agent_photo_url}
-                sizeClassName="h-16 w-16"
-                textClassName="text-lg"
-              />
+              <div className="relative">
+                <AgentAvatar
+                  name={agent?.name}
+                  email={agent?.email}
+                  photoUrl={agent?.agent_photo_url}
+                  sizeClassName="h-16 w-16"
+                  textClassName="text-lg"
+                />
+                {agent?.company_logo_url && (
+                  <img
+                    src={agent.company_logo_url}
+                    alt={agent.broker_name || "Company logo"}
+                    className="absolute -bottom-1 -right-1 h-7 w-7 rounded-lg border-2 border-white bg-white object-cover shadow-sm"
+                  />
+                )}
+              </div>
               <div>
                 <p className="text-base font-semibold text-ink-900">
                   {agent?.name || "Agent"}
@@ -206,7 +297,7 @@ export default function AgentDashboard() {
               <button onClick={openProfile} className="btn-secondary">
                 <UserRound className="h-4 w-4" /> Profile
               </button>
-              <button onClick={signOut} className="btn-ghost" title="Sign out">
+              <button onClick={signOut} className="btn-ghost" title="Sign out" aria-label="Sign out">
                 <LogOut className="h-4 w-4" /> Sign Out
               </button>
             </div>
@@ -245,15 +336,48 @@ export default function AgentDashboard() {
           />
         </div>
 
-        {/* Search */}
-        <div className="mt-6 relative max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-          <input
-            className="input pl-9"
-            placeholder="Search clients…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        {/* Search + filter + sort */}
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1 max-w-sm">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+            <input
+              className="input pl-9"
+              placeholder="Search clients…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search clients"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-ink-200 bg-white p-0.5 shadow-sm">
+              {(["all", "active", "pending"] as FilterKey[]).map((key) => (
+                <button
+                  key={key}
+                  onClick={() => setFilterKey(key)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize transition ${
+                    filterKey === key
+                      ? "bg-brand-600 text-white"
+                      : "text-ink-600 hover:bg-ink-100"
+                  }`}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+            <div className="relative">
+              <ArrowDownUp className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+                className="rounded-lg border border-ink-200 bg-white py-2 pl-8 pr-3 text-xs font-semibold text-ink-700 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                aria-label="Sort clients"
+              >
+                <option value="created_at">Date added</option>
+                <option value="name">Name</option>
+                <option value="status">Status</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Client cards */}
@@ -262,21 +386,21 @@ export default function AgentDashboard() {
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-brand-600" />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : filteredAndSorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-ink-100">
                 <Users className="h-6 w-6 text-ink-400" />
               </div>
               <p className="mt-3 text-sm font-medium text-ink-700">
-                {search ? "No clients match your search." : "No clients yet."}
+                {search || filterKey !== "all" ? "No clients match your filters." : "No clients yet."}
               </p>
               <p className="mt-1 text-xs text-ink-400">
-                {search ? "" : "Add your first client to get started."}
+                {search || filterKey !== "all" ? "" : "Add your first client to get started."}
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
-              {filtered.map((c) => {
+              {filteredAndSorted.map((c) => {
                 const isRenter = c.client_type === "renter";
                 const profileStatus = c.client_status || (isRenter ? "Searching" : "Active Search");
 
@@ -288,6 +412,9 @@ export default function AgentDashboard() {
                         <p className="mt-0.5 text-sm text-ink-500">{isRenter ? "Renter" : "Buyer"}</p>
                         <p className="mt-2 text-sm text-ink-700">
                           Status: <span className="font-medium text-ink-900">{profileStatus}</span>
+                        </p>
+                        <p className="mt-1 text-xs text-ink-400">
+                          Added {formatDate(c.created_at)}
                         </p>
                       </div>
                       {c.user_id ? (
@@ -351,6 +478,7 @@ export default function AgentDashboard() {
                       <button
                         onClick={() => copyLink(c.id)}
                         className="btn-ghost py-1.5 text-xs"
+                        aria-label={`Copy dashboard link for ${c.name}`}
                         title="Copy dashboard link"
                       >
                         {copiedId === c.id ? (
@@ -358,6 +486,30 @@ export default function AgentDashboard() {
                         ) : (
                           <Copy className="h-3.5 w-3.5" />
                         )}
+                      </button>
+                      {!c.user_id && (
+                        <button
+                          onClick={() => handleReinvite(c)}
+                          className="btn-ghost py-1.5 text-xs"
+                          disabled={reinvitingId === c.id}
+                          aria-label={`Resend setup invite to ${c.name}`}
+                          title="Resend setup invite"
+                        >
+                          {reinvitingId === c.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Send className="h-3.5 w-3.5" />
+                          )}
+                          Resend
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setDeleteTarget(c)}
+                        className="btn-ghost py-1.5 text-xs text-ink-400 hover:text-red-600"
+                        aria-label={`Remove ${c.name} from roster`}
+                        title="Remove client"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
 
@@ -402,6 +554,16 @@ export default function AgentDashboard() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Remove client"
+        message={`Are you sure you want to remove ${deleteTarget?.name}? Their searches and listings will also be deleted. This cannot be undone.`}
+        confirmLabel="Remove client"
+        variant="danger"
+        onConfirm={handleDeleteClient}
+        onCancel={() => !deleting && setDeleteTarget(null)}
+      />
     </div>
   );
 }
@@ -439,6 +601,7 @@ function AddClientModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { toast } = useToast();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -472,6 +635,7 @@ function AddClientModal({
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to add client");
       setSuccess(true);
+      toast(`${name} added — invite email sent`, "success");
       setTimeout(onCreated, 1800);
     } catch (err) {
       setError((err as Error).message);
@@ -500,7 +664,7 @@ function AddClientModal({
               <h3 className="font-display text-xl font-semibold text-ink-900">
                 Add new client
               </h3>
-              <button onClick={onClose} className="btn-ghost p-1.5">
+              <button onClick={onClose} className="btn-ghost p-1.5" aria-label="Close dialog">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -556,7 +720,9 @@ function AddClientModal({
                   {submitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    "Add client"
+                    <>
+                      <UserPlus className="h-4 w-4" /> Add client
+                    </>
                   )}
                 </button>
               </div>

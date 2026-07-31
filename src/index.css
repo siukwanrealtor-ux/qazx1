@@ -14,6 +14,9 @@
     @apply font-display;
     letter-spacing: -0.01em;
   }
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white rounded-md;
+  }
 }
 
 @layer components {
@@ -56,4 +59,12 @@
 }
 .animate-fade-in {
   animation: fade-in 0.3s ease-out both;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-toast-in {
+  animation: toast-in 0.3s ease-out both;
 }
